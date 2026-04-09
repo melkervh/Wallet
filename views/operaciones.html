@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Transferencias</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html">Login</a>
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html" class="enlace_activo">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Transferencias</h1>
+            <p>Modulo exclusivo para enviar dinero. El historial esta en la seccion Movimientos.</p>
+        </header>
+
+        <section class="rejilla_operaciones">
+            <article class="tarjeta bloque_banco">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"></path><path d="M13 7l7 5-7 5"></path></svg>
+                    </span>
+                    <span>Nueva transferencia</span>
+                </h2>
+                <form id="formulario_transferencia" class="formulario" novalidate>
+                    <label for="cuenta_origen_transferencia">Cuenta origen</label>
+                    <input id="cuenta_origen_transferencia" name="cuenta_origen_transferencia" type="text" placeholder="Wallet Principal" required>
+
+                    <label for="tipo_transferencia">Tipo de transferencia</label>
+                    <select id="tipo_transferencia" name="tipo_transferencia" required>
+                        <option value="inmediata">Inmediata</option>
+                        <option value="programada">Programada</option>
+                    </select>
+
+                    <label for="fecha_programada_transferencia">Fecha programada</label>
+                    <input id="fecha_programada_transferencia" name="fecha_programada_transferencia" type="date">
+
+                    <label for="destinatario_transferencia">Destinatario</label>
+                    <input id="destinatario_transferencia" name="destinatario_transferencia" type="text" placeholder="Nombre completo" required>
+
+                    <label for="banco_destino_transferencia">Banco o wallet destino</label>
+                    <input id="banco_destino_transferencia" name="banco_destino_transferencia" type="text" placeholder="Banco Ejemplo" required>
+
+                    <label for="monto_transferencia">Monto</label>
+                    <input id="monto_transferencia" name="monto_transferencia" type="number" min="1" step="0.01" placeholder="Ejemplo: 150.00" required>
+
+                    <div class="fila_montos_rapidos">
+                        <button type="button" class="boton_monto_rapido" data-monto="25">$25</button>
+                        <button type="button" class="boton_monto_rapido" data-monto="50">$50</button>
+                        <button type="button" class="boton_monto_rapido" data-monto="100">$100</button>
+                        <button type="button" class="boton_monto_rapido" data-monto="200">$200</button>
+                    </div>
+
+                    <label for="concepto_transferencia">Concepto</label>
+                    <input id="concepto_transferencia" name="concepto_transferencia" type="text" placeholder="Pago de servicios" required>
+
+                    <label for="referencia_transferencia">Referencia interna</label>
+                    <input id="referencia_transferencia" name="referencia_transferencia" type="text" placeholder="Ejemplo: FACT-2031">
+
+                    <button type="submit" class="boton boton-primario">Confirmar transferencia</button>
+                </form>
+                <p id="texto_estado_transferencia" class="texto-secundario">Sin transferencias nuevas en esta sesion.</p>
+            </article>
+
+            <article class="tarjeta bloque_banco">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6"></path><path d="M10 18V10"></path><path d="M15 18V8"></path><path d="M20 18V4"></path></svg>
+                    </span>
+                    <span>Resumen operativo</span>
+                </h2>
+                <ul class="lista_texto" id="lista_resumen_operaciones"></ul>
+
+                <h2 class="titulo_icono titulo_secundario_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11a4 4 0 1 1 8 0"></path><path d="M4 20a8 8 0 0 1 16 0"></path></svg>
+                    </span>
+                    <span>Beneficiarios frecuentes</span>
+                </h2>
+                <ul class="lista_texto" id="lista_beneficiarios_operaciones"></ul>
+
+                <a class="enlace_accion" href="movimientos.html">Ir a movimientos</a>
+            </article>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+
+

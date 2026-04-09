@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Login</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html" class="enlace_activo">Login</a>
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="aprendizaje_forex.html">Modulo Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu contenedor-centrado">
+        <section class="panel_acceso">
+            <article class="tarjeta tarjeta-formulario">
+                <header class="encabezado-seccion">
+                    <h1>Iniciar sesion</h1>
+                    <p>Ingresa con tu correo y contrasena para continuar.</p>
+                </header>
+
+                <form id="formulario_login" class="formulario" novalidate>
+                    <label for="correo_usuario">Correo</label>
+                    <input id="correo_usuario" name="correo_usuario" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                    <label for="contrasena_usuario">Contrasena</label>
+                    <input id="contrasena_usuario" name="contrasena_usuario" type="password" placeholder="********" required>
+
+                    <label class="fila_control_login" for="recordar_sesion">
+                        <input id="recordar_sesion" name="recordar_sesion" type="checkbox">
+                        <span>Recordar sesion en este dispositivo</span>
+                    </label>
+
+                    <button type="submit" class="boton boton-primario">Entrar</button>
+                </form>
+
+                <div class="enlaces_login">
+                    <a href="#">Olvide mi contrasena</a>
+                    <a href="#">Ayuda de acceso</a>
+                </div>
+            </article>
+
+            <article class="tarjeta panel_info_acceso">
+                <h2>Acceso seguro</h2>
+                <ul class="lista_texto">
+                    <li>Revisa siempre tus ultimos accesos.</li>
+                    <li>No compartas credenciales ni codigos.</li>
+                    <li>Cierra sesion al usar equipos compartidos.</li>
+                </ul>
+            </article>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+
+

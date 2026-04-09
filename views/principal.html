@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Configuracion basica del documento -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Panel Wallet</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <!-- Barra superior fija -->
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html">Login</a>
+                <a href="principal.html" class="enlace_activo">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <!-- Panel wallet completo -->
+    <main class="contenedor contenedor_con_menu">
+        <section id="bloque_saldo_toggle" class="resumen_wallet tarjeta" role="button" tabindex="0" aria-label="Abrir accesos de cuenta">
+            <div class="bloque_saldo_principal">
+                <p class="etiqueta_pequena">Saldo disponible</p>
+                <h1 id="texto_saldo_disponible">$ 0.00</h1>
+                <p id="texto_saldo_contable">Saldo contable: $ 0.00</p>
+                <p id="texto_cuenta_saldo" class="texto_cuenta_saldo">Cuenta: 01-4587-2369-11 | Toca para ver accesos rapidos</p>
+            </div>
+        </section>
+
+        <section class="franja_estado_externa">
+            <article class="tarjeta estado_externo_item">
+                <p class="etiqueta_pequena">Limite diario</p>
+                <strong>$ 2,500.00</strong>
+            </article>
+            <article class="tarjeta estado_externo_item">
+                <p class="etiqueta_pequena">Proximo pago</p>
+                <strong>Internet | 12 de marzo</strong>
+            </article>
+            <article class="tarjeta estado_externo_item">
+                <p class="etiqueta_pequena">Estado seguridad</p>
+                <strong>Proteccion activa</strong>
+            </article>
+        </section>
+
+        <section id="contenedor_atajos_cuenta" class="tarjeta bloque_banco contenedor_atajos_cuenta oculto">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+                </span>
+                <span>Accesos de cuenta</span>
+            </h2>
+            <div class="rejilla_atajos">
+                <button class="atajo_icono" type="button" data-panel="panel_movimientos">
+                    <span class="simbolo_atajo">M</span>
+                    <span>Movimientos</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_favoritos">
+                    <span class="simbolo_atajo">F</span>
+                    <span>Favoritos</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_tarjetas">
+                    <span class="simbolo_atajo">T</span>
+                    <span>Tarjetas</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_cuentas">
+                    <span class="simbolo_atajo">C</span>
+                    <span>Cuentas</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_servicios">
+                    <span class="simbolo_atajo">S</span>
+                    <span>Servicios</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_prestamos">
+                    <span class="simbolo_atajo">P</span>
+                    <span>Prestamos</span>
+                </button>
+                <button class="atajo_icono" type="button" data-panel="panel_seguridad">
+                    <span class="simbolo_atajo">G</span>
+                    <span>Seguridad</span>
+                </button>
+            </div>
+            <button id="boton_cerrar_paneles_wallet" class="boton boton-secundario boton_cerrar_panel" type="button">Cerrar</button>
+        </section>
+
+        <section id="panel_movimientos" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+                </span>
+                <span>Movimientos recientes</span>
+            </h2>
+            <ul id="lista_movimientos_recientes" class="lista_texto"></ul>
+            <h2 class="titulo_icono titulo_secundario_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6"></path><path d="M10 18V10"></path><path d="M15 18V8"></path><path d="M20 18V4"></path></svg>
+                </span>
+                <span>Resumen mensual</span>
+            </h2>
+            <ul class="lista_texto" id="lista_resumen_mensual"></ul>
+            <a class="enlace_accion" href="movimientos.html">Ir al historial completo</a>
+        </section>
+
+        <section id="panel_favoritos" class="tarjeta bloque_banco panel_icono">
+            <div class="rejilla_wallet_superior">
+                <article class="bloque_banco">
+                    <h2 class="titulo_icono">
+                        <span class="icono_circular">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11a4 4 0 1 1 8 0"></path><path d="M4 20a8 8 0 0 1 16 0"></path></svg>
+                        </span>
+                        <span>Contactos frecuentes</span>
+                    </h2>
+                    <ul class="lista_texto" id="lista_contactos_frecuentes"></ul>
+                </article>
+
+                <article class="bloque_banco">
+                    <h2 class="titulo_icono">
+                        <span class="icono_circular">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v4"></path><path d="M18 3v4"></path><path d="M4 9h16"></path><path d="M4 6h16v14H4z"></path></svg>
+                        </span>
+                        <span>Pagos programados</span>
+                    </h2>
+                    <ul class="lista_texto" id="lista_pagos_programados"></ul>
+                </article>
+
+                <article class="bloque_banco">
+                    <h2 class="titulo_icono">
+                        <span class="icono_circular">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"></path><path d="M9 9h6"></path><path d="M9 12h6"></path><path d="M9 15h4"></path></svg>
+                        </span>
+                        <span>Suscripciones activas</span>
+                    </h2>
+                    <ul class="lista_texto" id="lista_suscripciones"></ul>
+                </article>
+            </div>
+        </section>
+
+        <section id="panel_tarjetas" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v10H4z"></path><path d="M4 12h16"></path><path d="M8 16h3"></path></svg>
+                </span>
+                <span>Tarjetas vinculadas</span>
+            </h2>
+            <div class="rejilla_wallet_superior">
+                <article class="bloque_banco">
+                    <div class="tarjeta_visual">
+                        <p>Wallet VISA</p>
+                        <strong>**** **** **** 4832</strong>
+                        <small>Limite diario: $2,500.00</small>
+                    </div>
+                </article>
+                <article class="bloque_banco">
+                    <div class="tarjeta_visual">
+                        <p>Wallet Master</p>
+                        <strong>**** **** **** 7194</strong>
+                        <small>Limite diario: $1,800.00</small>
+                    </div>
+                </article>
+                <article class="bloque_banco">
+                    <h2 class="titulo_icono">
+                        <span class="icono_circular">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3 7-8 9-5-2-8-4-8-9V7z"></path><path d="M9 12l2 2 4-4"></path></svg>
+                        </span>
+                        <span>Alertas de seguridad</span>
+                    </h2>
+                    <ul class="lista_texto" id="lista_alertas_seguridad"></ul>
+                </article>
+            </div>
+        </section>
+
+        <section id="panel_cuentas" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z"></path><path d="M3 11h18"></path></svg>
+                </span>
+                <span>Mis cuentas</span>
+            </h2>
+            <ul class="lista_cuentas" id="lista_cuentas_wallet"></ul>
+            <div class="grid_cuentas_detalle">
+                <article class="tarjeta_detalle_cuenta">
+                    <p>Cuenta principal</p>
+                    <strong>Uso mensual: 64%</strong>
+                </article>
+                <article class="tarjeta_detalle_cuenta">
+                    <p>Cuenta ahorro</p>
+                    <strong>Meta cumplida: 43%</strong>
+                </article>
+                <article class="tarjeta_detalle_cuenta">
+                    <p>Cuenta gastos</p>
+                    <strong>Disponible: 36%</strong>
+                </article>
+            </div>
+        </section>
+
+        <section id="panel_servicios" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"></path><path d="M9 9h6"></path><path d="M9 12h6"></path><path d="M9 15h4"></path></svg>
+                </span>
+                <span>Servicios frecuentes</span>
+            </h2>
+            <ul class="lista_texto">
+                <li>Pago de energia electrica</li>
+                <li>Recarga de telefonia movil</li>
+                <li>Pago de internet hogar</li>
+                <li>Pago de colegiatura</li>
+            </ul>
+        </section>
+
+        <section id="panel_prestamos" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 16h16"></path><path d="M8 8v8"></path><path d="M16 8v8"></path></svg>
+                </span>
+                <span>Prestamos y creditos</span>
+            </h2>
+            <ul class="lista_texto">
+                <li>Precalificacion disponible hasta $1,500.00</li>
+                <li>Cuota estimada mensual: $96.40</li>
+                <li>Proxima revision crediticia: 20 de marzo</li>
+            </ul>
+        </section>
+
+        <section id="panel_seguridad" class="tarjeta bloque_banco panel_icono">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3 7-8 9-5-2-8-4-8-9V7z"></path><path d="M9 12l2 2 4-4"></path></svg>
+                </span>
+                <span>Centro de seguridad</span>
+            </h2>
+            <ul class="lista_texto">
+                <li>Autenticacion doble: activa</li>
+                <li>Notificaciones de acceso: activas</li>
+                <li>Cambio de contrasena recomendado en 15 dias</li>
+            </ul>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+

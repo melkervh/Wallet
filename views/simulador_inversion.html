@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Configuracion basica del documento -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Simulador Forex</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html">Login</a>
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="simulador_inversion.html" class="enlace_activo">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Simulador Forex</h1>
+            <p>Practica escenarios de riesgo con apoyo visual antes de operar en real.</p>
+        </header>
+
+        <section class="rejilla_operaciones">
+            <article class="tarjeta bloque_banco">
+                <h2>Configurar simulacion</h2>
+                <form id="formulario_simulador" class="formulario" novalidate>
+                    <label for="capital_inicial">Capital inicial</label>
+                    <input id="capital_inicial" name="capital_inicial" type="number" min="1" placeholder="Ejemplo: 1000" required>
+
+                    <label for="porcentaje_riesgo">Riesgo por operacion (%)</label>
+                    <input id="porcentaje_riesgo" name="porcentaje_riesgo" type="number" min="1" max="100" placeholder="Ejemplo: 2" required>
+
+                    <label for="cantidad_operaciones">Cantidad de operaciones</label>
+                    <input id="cantidad_operaciones" name="cantidad_operaciones" type="number" min="1" placeholder="Ejemplo: 10" required>
+
+                    <button type="submit" class="boton boton-primario">Calcular simulacion</button>
+                </form>
+                <p id="texto_resultado_simulacion" class="texto-secundario">Aun no hay resultados.</p>
+            </article>
+
+            <article class="tarjeta bloque_banco">
+                <h2>Diario de simulacion</h2>
+                <ul class="lista_texto" id="lista_diario_simulacion"></ul>
+            </article>
+        </section>
+
+        <section class="rejilla-tarjetas">
+            <article class="tarjeta">
+                <h2>Curva de capital simulada</h2>
+                <div class="contenedor_grafico">
+                    <canvas id="grafico_simulacion_capital" width="900" height="280"></canvas>
+                </div>
+            </article>
+
+            <article class="tarjeta">
+                <h2>Precio de referencia (Demo)</h2>
+                <div class="contenedor_grafico">
+                    <canvas id="grafico_simulacion_velas" width="900" height="280"></canvas>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+
+

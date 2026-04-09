@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Configuracion basica del documento -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Aprendizaje Forex</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html">Login</a>
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="aprendizaje_forex.html" class="enlace_activo">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Aprendizaje Forex</h1>
+            <p>Zona educativa y visual con graficos para entender mercado y tendencias.</p>
+        </header>
+
+        <section class="rejilla-tarjetas">
+            <article class="tarjeta">
+                <h2>Modulo 1: Fundamentos</h2>
+                <ul class="lista_texto">
+                    <li>Pares mayores, menores y exoticos.</li>
+                    <li>Bid, ask y spread explicado.</li>
+                    <li>Sesiones de Londres, New York y Asia.</li>
+                </ul>
+            </article>
+
+            <article class="tarjeta">
+                <h2>Modulo 2: Riesgo</h2>
+                <ul class="lista_texto">
+                    <li>Maximo 1% a 2% por operacion.</li>
+                    <li>Stop loss obligatorio.</li>
+                    <li>Relacion riesgo/beneficio minima 1:1.5.</li>
+                </ul>
+            </article>
+
+            <article class="tarjeta">
+                <h2>Modulo 3: Ejecucion</h2>
+                <ul class="lista_texto">
+                    <li>Entrada por confirmacion, no por impulso.</li>
+                    <li>Plan previo de salida parcial o total.</li>
+                    <li>Registro en diario de trading.</li>
+                </ul>
+            </article>
+        </section>
+
+        <section class="rejilla-tarjetas">
+            <article class="tarjeta">
+                <h2>Tendencia General (Demo)</h2>
+                <div class="contenedor_grafico">
+                    <canvas id="grafico_forex_tendencia" width="900" height="280"></canvas>
+                </div>
+            </article>
+
+            <article class="tarjeta">
+                <h2>Velas de Practica (Demo)</h2>
+                <div class="contenedor_grafico">
+                    <canvas id="grafico_forex_velas" width="900" height="280"></canvas>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+
+

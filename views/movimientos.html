@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Movimientos</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="login.html">Login</a>
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html" class="enlace_activo">Movimientos</a>
+                <a href="aprendizaje_forex.html">Modulo Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">3</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Transferencia completada.</li>
+                        <li>Pago programado para el 12 de marzo.</li>
+                        <li>Nuevo acceso reconocido.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Movimientos</h1>
+            <p>Consulta y filtra el historial de operaciones sin mezclarlo con transferencias.</p>
+        </header>
+
+        <section class="tarjeta bloque_banco bloque_informativo">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+                </span>
+                <span>Filtros del historial</span>
+            </h2>
+            <div class="rejilla_filtros">
+                <div>
+                    <label for="filtro_busqueda_movimientos">Buscar por detalle o contacto</label>
+                    <input id="filtro_busqueda_movimientos" type="text" placeholder="Ejemplo: Ana Lopez">
+                </div>
+                <div>
+                    <label for="filtro_tipo_movimientos">Tipo</label>
+                    <select id="filtro_tipo_movimientos">
+                        <option value="todos">Todos</option>
+                        <option value="Transferencia">Transferencia</option>
+                        <option value="Deposito">Deposito</option>
+                        <option value="Pago">Pago</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filtro_estado_movimientos">Estado</label>
+                    <select id="filtro_estado_movimientos">
+                        <option value="todos">Todos</option>
+                        <option value="Completada">Completada</option>
+                        <option value="Pendiente">Pendiente</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="rejilla_operaciones">
+            <article class="tarjeta bloque_banco">
+                <h2>Actividad reciente</h2>
+                <ul class="lista_texto" id="lista_actividad_transferencias"></ul>
+            </article>
+
+            <article class="tarjeta bloque_banco">
+                <h2>Resumen operativo</h2>
+                <ul class="lista_texto" id="lista_resumen_operaciones"></ul>
+            </article>
+        </section>
+
+        <section class="tarjeta bloque_banco bloque_informativo">
+            <h2 class="titulo_icono">
+                <span class="icono_circular">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+                </span>
+                <span>Historial de movimientos</span>
+            </h2>
+            <div class="contenedor_tabla">
+                <table class="tabla_movimientos">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Detalle</th>
+                            <th>Estado</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpo_tabla_movimientos"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>
+
+

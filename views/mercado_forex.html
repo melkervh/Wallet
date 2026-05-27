@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Mercado Forex</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="mercado_forex.html" class="enlace_activo">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">0</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Mercado actual Forex</h1>
+            <p>Consulta datos reales de pares principales, su sesgo, volatilidad y notas de contexto para estudiar el comportamiento actual del mercado.</p>
+        </header>
+
+        <section class="rejilla_operaciones">
+            <article class="tarjeta bloque_banco">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16"></path><path d="M6 18V9"></path><path d="M12 18V5"></path><path d="M18 18v-7"></path></svg>
+                    </span>
+                    <span>Mercado real de referencia</span>
+                </h2>
+                <label for="selector_par_forex">Par principal</label>
+                <select id="selector_par_forex">
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="EURGBP">EUR/GBP</option>
+                    <option value="USDJPY">USD/JPY</option>
+                </select>
+                <p id="texto_resumen_forex" class="texto_estado_formulario">Cargando comportamiento del mercado...</p>
+                <div class="contenedor_grafico">
+                    <canvas id="grafico_forex_real" height="260"></canvas>
+                </div>
+                <div id="contenedor_metricas_forex" class="rejilla_metricas_forex"></div>
+            </article>
+
+            <article class="tarjeta bloque_banco">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"></path><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg>
+                    </span>
+                    <span>Lectura del contexto</span>
+                </h2>
+                <ul id="lista_contexto_forex" class="lista_texto"></ul>
+                <div class="tarjeta_resumen_forex">
+                    <h3>Ruta sugerida</h3>
+                    <ul class="lista_texto">
+                        <li>Revisa primero el sesgo y la volatilidad del par.</li>
+                        <li>Luego entra al bloque de aprendizaje para estudiar la teoria.</li>
+                        <li>Finalmente valida tu comprension en el cuestionario y pasa al simulador.</li>
+                    </ul>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>

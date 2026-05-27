@@ -15,22 +15,16 @@
             </button>
             <nav id="menu_superior" class="menu_superior">
                 <a href="login.html" class="enlace_activo">Login</a>
-                <a href="principal.html">Wallet</a>
-                <a href="operaciones.html">Transferencias</a>
-                <a href="movimientos.html">Movimientos</a>
-                <a href="aprendizaje_forex.html">Modulo Forex</a>
             </nav>
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
-                    <span class="contador_alertas">3</span>
+                    <span class="contador_alertas">0</span>
                 </button>
                 <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
                     <h3>Alertas</h3>
                     <ul class="lista_alertas_superior">
-                        <li>Transferencia completada.</li>
-                        <li>Pago programado para el 12 de marzo.</li>
-                        <li>Nuevo acceso reconocido.</li>
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
                     </ul>
                 </section>
             </div>
@@ -38,45 +32,144 @@
     </header>
 
     <main class="contenedor contenedor_con_menu contenedor-centrado">
-        <section class="panel_acceso">
+        <section class="panel_acceso panel_acceso_simple">
             <article class="tarjeta tarjeta-formulario">
-                <header class="encabezado-seccion">
-                    <h1>Iniciar sesion</h1>
-                    <p>Ingresa con tu correo y contrasena para continuar.</p>
+                <header class="encabezado-seccion encabezado-seccion-centrado">
+                    <h1>Inicio de sesion</h1>
+                    <p>Ingresa a tu wallet, registra la primera cuenta cuando la base este vacia o recupera tu acceso desde la opcion inferior.</p>
+                    <p id="mensaje_bootstrap_login" class="aviso_bootstrap_login oculto" aria-live="polite"></p>
                 </header>
 
-                <form id="formulario_login" class="formulario" novalidate>
-                    <label for="correo_usuario">Correo</label>
-                    <input id="correo_usuario" name="correo_usuario" type="email" placeholder="tucorreo@ejemplo.com" required>
+                <div class="selector_acceso">
+                    <button type="button" class="boton_selector_acceso selector_acceso_activo" data-modo-acceso="login">Entrar</button>
+                    <button type="button" class="boton_selector_acceso" data-modo-acceso="registro">Registrarme</button>
+                </div>
 
-                    <label for="contrasena_usuario">Contrasena</label>
-                    <input id="contrasena_usuario" name="contrasena_usuario" type="password" placeholder="********" required>
+                <section class="panel_formulario_acceso panel_formulario_activo" data-panel-acceso="login">
+                    <form id="formulario_login" class="formulario" novalidate>
+                        <label for="correo_usuario">Correo</label>
+                        <input id="correo_usuario" name="correo_usuario" type="email" placeholder="tucorreo@ejemplo.com" required>
 
-                    <label class="fila_control_login" for="recordar_sesion">
-                        <input id="recordar_sesion" name="recordar_sesion" type="checkbox">
-                        <span>Recordar sesion en este dispositivo</span>
-                    </label>
+                        <label for="contrasena_usuario">Contrasena</label>
+                        <input id="contrasena_usuario" name="contrasena_usuario" type="password" placeholder="********" required>
 
-                    <button type="submit" class="boton boton-primario">Entrar</button>
-                </form>
+                        <label class="fila_control_login" for="recordar_sesion">
+                            <input id="recordar_sesion" name="recordar_sesion" type="checkbox">
+                            <span>Recordar sesion en este dispositivo</span>
+                        </label>
+
+                        <button type="submit" class="boton boton-primario">Entrar</button>
+                    </form>
+                    <p id="mensaje_login" class="texto_estado_formulario">Usa tus credenciales reales de PostgreSQL para entrar.</p>
+                </section>
+
+                <section class="panel_formulario_acceso" data-panel-acceso="registro">
+                    <form id="formulario_registro" class="formulario" novalidate>
+                        <div class="rejilla_campos_dobles">
+                            <div>
+                                <label for="registro_nombres">Nombres</label>
+                                <input id="registro_nombres" name="registro_nombres" type="text" placeholder="Jorge" maxlength="80" autocomplete="given-name" required>
+                            </div>
+                            <div>
+                                <label for="registro_apellidos">Apellidos</label>
+                                <input id="registro_apellidos" name="registro_apellidos" type="text" placeholder="Mendoza" maxlength="80" autocomplete="family-name" required>
+                            </div>
+                        </div>
+
+                        <div class="rejilla_campos_dobles">
+                            <div>
+                                <label for="registro_correo">Correo</label>
+                                <input id="registro_correo" name="registro_correo" type="email" placeholder="correo@ejemplo.com" maxlength="150" autocomplete="email" required>
+                            </div>
+                            <div class="campo_telefono_compuesto">
+                                <span class="campo_telefono_etiqueta">Telefono</span>
+                                <div class="campo_telefono_compuesto_interior">
+                                    <div>
+                                        <label for="registro_prefijo_telefono">Pais</label>
+                                        <select id="registro_prefijo_telefono" name="registro_prefijo_telefono" autocomplete="off" required></select>
+                                    </div>
+                                    <div>
+                                        <label for="registro_telefono">Numero</label>
+                                        <input id="registro_telefono" name="registro_telefono" type="text" placeholder="70000000" maxlength="15" inputmode="numeric" autocomplete="tel-local" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rejilla_campos_dobles">
+                            <div>
+                                <label for="registro_fecha_nacimiento">Fecha de nacimiento</label>
+                                <input id="registro_fecha_nacimiento" name="registro_fecha_nacimiento" type="date">
+                            </div>
+                            <div>
+                                <label for="registro_documento">Documento</label>
+                                <input id="registro_documento" name="registro_documento" type="text" placeholder="12345678-9" maxlength="10" inputmode="numeric" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <label for="registro_direccion">Direccion</label>
+                        <input id="registro_direccion" name="registro_direccion" type="text" placeholder="San Salvador, El Salvador" maxlength="300" autocomplete="street-address">
+
+                        <div class="rejilla_campos_dobles">
+                            <div>
+                                <label for="registro_contrasena">Contrasena</label>
+                                <input id="registro_contrasena" name="registro_contrasena" type="password" placeholder="Minimo 8 caracteres" required>
+                            </div>
+                            <div>
+                                <label for="registro_confirmacion">Confirmar contrasena</label>
+                                <input id="registro_confirmacion" name="registro_confirmacion" type="password" placeholder="Repite la contrasena" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="boton boton-primario">Crear usuario y cuenta</button>
+                    </form>
+                    <p id="mensaje_registro" class="texto_estado_formulario">Si es tu primer acceso, registrate y el sistema crea tu cuenta principal.</p>
+                </section>
+
+                <section class="panel_formulario_acceso" data-panel-acceso="recuperar">
+                    <form id="formulario_recuperacion" class="formulario" novalidate>
+                        <label for="recuperacion_correo">Correo de recuperacion</label>
+                        <input id="recuperacion_correo" name="recuperacion_correo" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                        <button type="submit" class="boton boton-primario">Enviar PIN por correo</button>
+                    </form>
+                    <p id="mensaje_recuperacion" class="texto_estado_formulario">Te enviaremos un PIN temporal al correo asociado a tu cuenta.</p>
+                </section>
+
+                <section class="panel_formulario_acceso" data-panel-acceso="reset">
+                    <form id="formulario_reset_password" class="formulario" novalidate>
+                        <label for="reset_correo">Correo</label>
+                        <input id="reset_correo" name="reset_correo" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                        <label for="reset_pin">PIN recibido</label>
+                        <input id="reset_pin" name="reset_pin" type="text" inputmode="numeric" maxlength="6" placeholder="123456" required>
+
+                        <button id="boton_validar_pin_reset" type="button" class="boton boton-secundario">Validar PIN</button>
+
+                        <div id="bloque_campos_password_reset" class="rejilla_campos_dobles bloque_password_reset bloque_password_reset_bloqueado" aria-disabled="true">
+                            <div>
+                                <label for="reset_nueva_contrasena">Nueva contrasena</label>
+                                <input id="reset_nueva_contrasena" name="reset_nueva_contrasena" type="password" placeholder="Nueva contrasena" required>
+                            </div>
+                            <div>
+                                <label for="reset_confirmacion_contrasena">Confirmar contrasena</label>
+                                <input id="reset_confirmacion_contrasena" name="reset_confirmacion_contrasena" type="password" placeholder="Repite la nueva contrasena" required>
+                            </div>
+                        </div>
+
+                        <button id="boton_confirmar_reset_password" type="submit" class="boton boton-primario" disabled>Cambiar contrasena e ingresar</button>
+                    </form>
+                    <p id="mensaje_reset_password" class="texto_estado_formulario">Primero valida tu PIN. Luego se habilitara el cambio de contrasena.</p>
+                </section>
 
                 <div class="enlaces_login">
-                    <a href="#">Olvide mi contrasena</a>
-                    <a href="#">Ayuda de acceso</a>
+                    <a href="#" data-cambiar-acceso="recuperar">Olvide mi contrasena</a>
                 </div>
-            </article>
-
-            <article class="tarjeta panel_info_acceso">
-                <h2>Acceso seguro</h2>
-                <ul class="lista_texto">
-                    <li>Revisa siempre tus ultimos accesos.</li>
-                    <li>No compartas credenciales ni codigos.</li>
-                    <li>Cierra sesion al usar equipos compartidos.</li>
-                </ul>
             </article>
         </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>
 </body>
 </html>

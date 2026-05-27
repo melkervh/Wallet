@@ -20,20 +20,18 @@
                 <a href="principal.html" class="enlace_activo">Wallet</a>
                 <a href="operaciones.html">Transferencias</a>
                 <a href="movimientos.html">Movimientos</a>
-                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="mercado_forex.html">Modulo Forex</a>
                 <a href="simulador_inversion.html">Simulador Forex</a>
             </nav>
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
-                    <span class="contador_alertas">3</span>
+                    <span class="contador_alertas">0</span>
                 </button>
                 <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
                     <h3>Alertas</h3>
                     <ul class="lista_alertas_superior">
-                        <li>Transferencia completada.</li>
-                        <li>Pago programado para el 12 de marzo.</li>
-                        <li>Nuevo acceso reconocido.</li>
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
                     </ul>
                 </section>
             </div>
@@ -48,21 +46,22 @@
                 <h1 id="texto_saldo_disponible">$ 0.00</h1>
                 <p id="texto_saldo_contable">Saldo contable: $ 0.00</p>
                 <p id="texto_cuenta_saldo" class="texto_cuenta_saldo">Cuenta: 01-4587-2369-11 | Toca para ver accesos rapidos</p>
+                <p id="texto_alerta_adelanto" class="texto_alerta_adelanto oculto"></p>
             </div>
         </section>
 
         <section class="franja_estado_externa">
             <article class="tarjeta estado_externo_item">
-                <p class="etiqueta_pequena">Limite diario</p>
-                <strong>$ 2,500.00</strong>
+                <p class="etiqueta_pequena">Saldo retenido</p>
+                <strong id="texto_limite_diario">$ 0.00</strong>
             </article>
             <article class="tarjeta estado_externo_item">
                 <p class="etiqueta_pequena">Proximo pago</p>
-                <strong>Internet | 12 de marzo</strong>
+                <strong id="texto_proximo_pago">Sin pagos programados</strong>
             </article>
             <article class="tarjeta estado_externo_item">
-                <p class="etiqueta_pequena">Estado seguridad</p>
-                <strong>Proteccion activa</strong>
+                <p class="etiqueta_pequena">Estado de cuenta</p>
+                <strong id="texto_estado_cuenta">Preparando tu espacio...</strong>
             </article>
         </section>
 
@@ -90,176 +89,450 @@
                     <span class="simbolo_atajo">C</span>
                     <span>Cuentas</span>
                 </button>
+                <button class="atajo_icono" type="button" data-panel="panel_ahorros">
+                    <span class="simbolo_atajo">A</span>
+                    <span>Ahorros</span>
+                </button>
                 <button class="atajo_icono" type="button" data-panel="panel_servicios">
                     <span class="simbolo_atajo">S</span>
                     <span>Servicios</span>
                 </button>
-                <button class="atajo_icono" type="button" data-panel="panel_prestamos">
-                    <span class="simbolo_atajo">P</span>
-                    <span>Prestamos</span>
-                </button>
-                <button class="atajo_icono" type="button" data-panel="panel_seguridad">
-                    <span class="simbolo_atajo">G</span>
-                    <span>Seguridad</span>
+                <button class="atajo_icono" type="button" data-panel="panel_adelanto">
+                    <span class="simbolo_atajo">D</span>
+                    <span>Adelanto</span>
                 </button>
             </div>
             <button id="boton_cerrar_paneles_wallet" class="boton boton-secundario boton_cerrar_panel" type="button">Cerrar</button>
         </section>
 
         <section id="panel_movimientos" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
-                </span>
-                <span>Movimientos recientes</span>
-            </h2>
-            <ul id="lista_movimientos_recientes" class="lista_texto"></ul>
-            <h2 class="titulo_icono titulo_secundario_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6"></path><path d="M10 18V10"></path><path d="M15 18V8"></path><path d="M20 18V4"></path></svg>
-                </span>
-                <span>Resumen mensual</span>
-            </h2>
-            <ul class="lista_texto" id="lista_resumen_mensual"></ul>
-            <a class="enlace_accion" href="movimientos.html">Ir al historial completo</a>
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+                    </span>
+                    <span>Movimientos recientes</span>
+                </h2>
+                <a class="enlace_accion enlace_accion_inline" href="movimientos.html">Ir al historial completo</a>
+            </div>
+            <div class="rejilla_resumen_wallet">
+                <article class="tarjeta_visual_resumen tarjeta_visual_resumen_larga">
+                    <p class="etiqueta_pequena">Ultimos registros</p>
+                    <ul id="lista_movimientos_recientes" class="lista_texto lista_texto_compacta"></ul>
+                </article>
+                <article class="tarjeta_visual_resumen">
+                    <p class="etiqueta_pequena">Resumen del mes</p>
+                    <ul class="lista_texto lista_texto_compacta" id="lista_resumen_mensual"></ul>
+                </article>
+            </div>
         </section>
 
         <section id="panel_favoritos" class="tarjeta bloque_banco panel_icono">
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                    </span>
+                    <span>Favoritos y beneficiarios</span>
+                </h2>
+                <button id="boton_abrir_modal_favorito" type="button" class="boton boton-primario">+ Agregar favorito</button>
+            </div>
+            <p id="mensaje_favoritos" class="texto_estado_formulario ayuda_formulario">Guarda destinatarios frecuentes para transferirles mas rapido.</p>
             <div class="rejilla_wallet_superior">
-                <article class="bloque_banco">
-                    <h2 class="titulo_icono">
-                        <span class="icono_circular">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11a4 4 0 1 1 8 0"></path><path d="M4 20a8 8 0 0 1 16 0"></path></svg>
-                        </span>
-                        <span>Contactos frecuentes</span>
-                    </h2>
+                <article class="bloque_banco tarjeta_visual_resumen">
+                    <h3>Contactos frecuentes</h3>
                     <ul class="lista_texto" id="lista_contactos_frecuentes"></ul>
                 </article>
 
-                <article class="bloque_banco">
-                    <h2 class="titulo_icono">
-                        <span class="icono_circular">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v4"></path><path d="M18 3v4"></path><path d="M4 9h16"></path><path d="M4 6h16v14H4z"></path></svg>
-                        </span>
-                        <span>Pagos programados</span>
-                    </h2>
+                <article class="bloque_banco tarjeta_visual_resumen">
+                    <h3>Pagos programados</h3>
                     <ul class="lista_texto" id="lista_pagos_programados"></ul>
                 </article>
 
-                <article class="bloque_banco">
-                    <h2 class="titulo_icono">
-                        <span class="icono_circular">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"></path><path d="M9 9h6"></path><path d="M9 12h6"></path><path d="M9 15h4"></path></svg>
-                        </span>
-                        <span>Suscripciones activas</span>
-                    </h2>
+                <article class="bloque_banco tarjeta_visual_resumen">
+                    <h3>Suscripciones activas</h3>
                     <ul class="lista_texto" id="lista_suscripciones"></ul>
                 </article>
             </div>
         </section>
 
         <section id="panel_tarjetas" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v10H4z"></path><path d="M4 12h16"></path><path d="M8 16h3"></path></svg>
-                </span>
-                <span>Tarjetas vinculadas</span>
-            </h2>
-            <div class="rejilla_wallet_superior">
-                <article class="bloque_banco">
-                    <div class="tarjeta_visual">
-                        <p>Wallet VISA</p>
-                        <strong>**** **** **** 4832</strong>
-                        <small>Limite diario: $2,500.00</small>
-                    </div>
-                </article>
-                <article class="bloque_banco">
-                    <div class="tarjeta_visual">
-                        <p>Wallet Master</p>
-                        <strong>**** **** **** 7194</strong>
-                        <small>Limite diario: $1,800.00</small>
-                    </div>
-                </article>
-                <article class="bloque_banco">
-                    <h2 class="titulo_icono">
-                        <span class="icono_circular">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3 7-8 9-5-2-8-4-8-9V7z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                        </span>
-                        <span>Alertas de seguridad</span>
-                    </h2>
-                    <ul class="lista_texto" id="lista_alertas_seguridad"></ul>
-                </article>
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v10H4z"></path><path d="M4 12h16"></path><path d="M8 16h3"></path></svg>
+                    </span>
+                    <span>Tarjetas vinculadas</span>
+                </h2>
+                <button id="boton_abrir_modal_tarjeta" type="button" class="boton boton-primario">+ Vincular tarjeta</button>
             </div>
+            <p id="mensaje_tarjetas" class="texto_estado_formulario">Vincula tus tarjetas para tenerlas centralizadas dentro de la wallet.</p>
+            <div id="contenedor_tarjetas_wallet" class="rejilla_wallet_superior"></div>
         </section>
 
         <section id="panel_cuentas" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z"></path><path d="M3 11h18"></path></svg>
-                </span>
-                <span>Mis cuentas</span>
-            </h2>
-            <ul class="lista_cuentas" id="lista_cuentas_wallet"></ul>
-            <div class="grid_cuentas_detalle">
-                <article class="tarjeta_detalle_cuenta">
-                    <p>Cuenta principal</p>
-                    <strong>Uso mensual: 64%</strong>
-                </article>
-                <article class="tarjeta_detalle_cuenta">
-                    <p>Cuenta ahorro</p>
-                    <strong>Meta cumplida: 43%</strong>
-                </article>
-                <article class="tarjeta_detalle_cuenta">
-                    <p>Cuenta gastos</p>
-                    <strong>Disponible: 36%</strong>
-                </article>
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z"></path><path d="M3 11h18"></path></svg>
+                    </span>
+                    <span>Mis cuentas</span>
+                </h2>
+                <button id="boton_abrir_modal_cuenta" type="button" class="boton boton-primario">+ Crear secundaria</button>
             </div>
+            <p id="mensaje_cuentas" class="texto_estado_formulario ayuda_formulario">Administra tu cuenta principal y abre cuentas wallet secundarias.</p>
+            <ul class="lista_cuentas" id="lista_cuentas_wallet"></ul>
+            <div id="detalle_cuentas_wallet" class="grid_cuentas_detalle"></div>
+        </section>
+
+        <section id="panel_ahorros" class="tarjeta bloque_banco panel_icono">
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16"></path><path d="M6 18V9"></path><path d="M12 18V5"></path><path d="M18 18v-7"></path></svg>
+                    </span>
+                    <span>Bolsillos de ahorro</span>
+                </h2>
+                <span class="texto_estado_inline">Crea varios bolsillos y mueve saldo entre metas.</span>
+            </div>
+            <div class="fila_acciones_modales">
+                <button id="boton_abrir_modal_meta_ahorro" type="button" class="boton boton-primario">+ Crear meta</button>
+                <button id="boton_abrir_modal_aporte_ahorro" type="button" class="boton boton-secundario">+ Transferir a ahorro</button>
+            </div>
+            <p id="mensaje_meta_ahorro" class="texto_estado_formulario ayuda_formulario">Selecciona la cuenta principal para crear tu ahorro.</p>
+            <p id="mensaje_aporte_ahorro" class="texto_estado_formulario ayuda_formulario">Selecciona un bolsillo destino para mover saldo.</p>
+            <div id="contenedor_ahorros_wallet" class="rejilla_wallet_superior"></div>
         </section>
 
         <section id="panel_servicios" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"></path><path d="M9 9h6"></path><path d="M9 12h6"></path><path d="M9 15h4"></path></svg>
-                </span>
-                <span>Servicios frecuentes</span>
-            </h2>
-            <ul class="lista_texto">
-                <li>Pago de energia electrica</li>
-                <li>Recarga de telefonia movil</li>
-                <li>Pago de internet hogar</li>
-                <li>Pago de colegiatura</li>
-            </ul>
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"></path><path d="M9 9h6"></path><path d="M9 12h6"></path><path d="M9 15h4"></path></svg>
+                    </span>
+                    <span>Centro de servicios</span>
+                </h2>
+                <div class="fila_acciones_modales">
+                    <button id="boton_abrir_modal_vincular_servicio" type="button" class="boton boton-primario">+ Vincular</button>
+                    <button id="boton_abrir_modal_pagar_servicio" type="button" class="boton boton-secundario">+ Pagar</button>
+                </div>
+            </div>
+            <p id="mensaje_vincular_servicio" class="texto_estado_formulario ayuda_formulario">Primero vincula el proveedor y luego podras reutilizarlo al pagar.</p>
+            <p id="mensaje_pagar_servicio" class="texto_estado_formulario ayuda_formulario">Si el servicio ya esta vinculado, el sistema completa el proveedor y el contrato.</p>
+            <ul id="lista_servicios_vinculados" class="lista_texto"></ul>
         </section>
 
-        <section id="panel_prestamos" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 16h16"></path><path d="M8 8v8"></path><path d="M16 8v8"></path></svg>
-                </span>
-                <span>Prestamos y creditos</span>
-            </h2>
-            <ul class="lista_texto">
-                <li>Precalificacion disponible hasta $1,500.00</li>
-                <li>Cuota estimada mensual: $96.40</li>
-                <li>Proxima revision crediticia: 20 de marzo</li>
-            </ul>
+        <section id="panel_adelanto" class="tarjeta bloque_banco panel_icono">
+            <div class="cabecera_panel_accion">
+                <h2 class="titulo_icono">
+                    <span class="icono_circular">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16"></path><path d="M4 16h16"></path><path d="M8 8v8"></path><path d="M16 8v8"></path></svg>
+                    </span>
+                    <span>Adelanto salarial</span>
+                </h2>
+                <button id="boton_abrir_modal_adelanto" type="button" class="boton boton-primario">+ Solicitar adelanto</button>
+            </div>
+            <p id="mensaje_adelanto" class="texto_estado_formulario">Si calificas, el adelanto se acredita en tu cuenta principal.</p>
+            <ul id="lista_historial_adelanto" class="lista_texto"></ul>
         </section>
 
-        <section id="panel_seguridad" class="tarjeta bloque_banco panel_icono">
-            <h2 class="titulo_icono">
-                <span class="icono_circular">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3 7-8 9-5-2-8-4-8-9V7z"></path><path d="M9 12l2 2 4-4"></path></svg>
-                </span>
-                <span>Centro de seguridad</span>
-            </h2>
-            <ul class="lista_texto">
-                <li>Autenticacion doble: activa</li>
-                <li>Notificaciones de acceso: activas</li>
-                <li>Cambio de contrasena recomendado en 15 dias</li>
-            </ul>
-        </section>
     </main>
 
+    <dialog id="modal_favorito_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Agregar favorito</h2>
+                <p>Guarda un beneficiario frecuente para usarlo luego en transferencias con menos pasos.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_favorito_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_favorito" class="formulario" novalidate>
+            <label for="favorito_nombre">Nombre del contacto</label>
+            <input id="favorito_nombre" name="favorito_nombre" type="text" placeholder="Ana Lopez" required>
+
+            <label for="favorito_alias">Alias corto</label>
+            <input id="favorito_alias" name="favorito_alias" type="text" placeholder="Ana ahorro">
+
+            <label for="favorito_banco">Banco o wallet destino</label>
+            <select id="favorito_banco" name="favorito_banco" required></select>
+
+            <label for="favorito_numero_cuenta">Numero de cuenta</label>
+            <input id="favorito_numero_cuenta" name="favorito_numero_cuenta" type="text" placeholder="012345678901" required>
+
+            <button type="submit" class="boton boton-primario">Guardar favorito</button>
+            <p id="mensaje_favoritos_modal" class="texto_estado_formulario ayuda_formulario">Guarda destinatarios frecuentes para transferirles mas rapido.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_tarjeta_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Vincular tarjeta</h2>
+                <p>Relaciona una tarjeta externa con tu wallet para visualizarla y usar su informacion de referencia.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_tarjeta_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_tarjeta" class="formulario" novalidate>
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="tarjeta_cuenta_id">Cuenta wallet</label>
+                    <select id="tarjeta_cuenta_id" name="tarjeta_cuenta_id" required></select>
+                </div>
+                <div>
+                    <label for="tarjeta_banco_id">Banco emisor</label>
+                    <select id="tarjeta_banco_id" name="tarjeta_banco_id" required></select>
+                </div>
+            </div>
+
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="tarjeta_alias">Alias</label>
+                    <input id="tarjeta_alias" name="tarjeta_alias" type="text" placeholder="Tarjeta personal">
+                </div>
+                <div>
+                    <label for="tarjeta_marca">Marca</label>
+                    <select id="tarjeta_marca" name="tarjeta_marca" required>
+                        <option value="Visa">Visa</option>
+                        <option value="Mastercard">Mastercard</option>
+                        <option value="American Express">American Express</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="tarjeta_tipo">Tipo</label>
+                    <select id="tarjeta_tipo" name="tarjeta_tipo" required>
+                        <option value="debito">Debito</option>
+                        <option value="credito">Credito</option>
+                        <option value="prepago">Prepago</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="tarjeta_ultimos4">Ultimos 4 digitos</label>
+                    <input id="tarjeta_ultimos4" name="tarjeta_ultimos4" type="text" maxlength="4" inputmode="numeric" placeholder="1234" required>
+                </div>
+            </div>
+
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="tarjeta_titular">Titular</label>
+                    <input id="tarjeta_titular" name="tarjeta_titular" type="text" placeholder="Nombre como aparece en la tarjeta" required>
+                </div>
+                <div>
+                    <label for="tarjeta_limite_diario">Limite diario del emisor</label>
+                    <input id="tarjeta_limite_diario" name="tarjeta_limite_diario" type="number" min="0" step="0.01" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="tarjeta_vence_mes">Mes de vencimiento</label>
+                    <input id="tarjeta_vence_mes" name="tarjeta_vence_mes" type="number" min="1" max="12" placeholder="12" required>
+                </div>
+                <div>
+                    <label for="tarjeta_vence_anio">Anio de vencimiento</label>
+                    <input id="tarjeta_vence_anio" name="tarjeta_vence_anio" type="number" min="2024" max="2100" placeholder="2030" required>
+                </div>
+            </div>
+
+            <label class="fila_control_login" for="tarjeta_predeterminada">
+                <input id="tarjeta_predeterminada" name="tarjeta_predeterminada" type="checkbox">
+                <span>Marcar como predeterminada</span>
+            </label>
+
+            <button type="submit" class="boton boton-primario">Vincular tarjeta</button>
+            <p id="mensaje_tarjetas_modal" class="texto_estado_formulario ayuda_formulario">Solo guardamos la referencia necesaria para mostrar y reutilizar la tarjeta.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_cuenta_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Crear cuenta secundaria</h2>
+                <p>Abre una cuenta wallet adicional para separar gastos, proyectos o presupuestos.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_cuenta_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_cuenta_secundaria" class="formulario" novalidate>
+            <label for="cuenta_secundaria_alias">Alias de la cuenta</label>
+            <input id="cuenta_secundaria_alias" name="cuenta_secundaria_alias" type="text" placeholder="Gastos del negocio" required>
+
+            <label for="cuenta_secundaria_moneda">Moneda</label>
+            <select id="cuenta_secundaria_moneda" name="cuenta_secundaria_moneda" required>
+                <option value="USD">USD</option>
+            </select>
+
+            <button type="submit" class="boton boton-primario">Crear cuenta</button>
+            <p id="mensaje_cuenta_modal" class="texto_estado_formulario ayuda_formulario">La nueva cuenta aparecera junto a tu cuenta principal y quedara lista para separar fondos.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_meta_ahorro_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Crear meta de ahorro</h2>
+                <p>Abre un bolsillo nuevo para separar dinero del saldo principal.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_meta_ahorro_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_ahorro" class="formulario" novalidate>
+            <label for="ahorro_cuenta_id">Cuenta base</label>
+            <select id="ahorro_cuenta_id" name="ahorro_cuenta_id" required></select>
+
+            <label for="ahorro_nombre">Nombre del ahorro</label>
+            <input id="ahorro_nombre" name="ahorro_nombre" type="text" placeholder="Fondo de emergencia" required>
+
+            <label for="ahorro_meta">Meta estimada</label>
+            <input id="ahorro_meta" name="ahorro_meta" type="number" min="0" step="0.01" placeholder="500.00">
+
+            <label for="ahorro_color">Color de referencia</label>
+            <div class="grupo_color_picker">
+                <input id="ahorro_color" name="ahorro_color" type="color" value="#6f3df4">
+                <span id="texto_color_ahorro" class="campo_color_visual">#6f3df4</span>
+            </div>
+
+            <button type="submit" class="boton boton-primario">Crear ahorro</button>
+            <p id="mensaje_meta_ahorro_modal" class="texto_estado_formulario ayuda_formulario">Cada bolsillo te ayuda a separar metas sin mezclar tu saldo operativo.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_aporte_ahorro_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Transferir a ahorro</h2>
+                <p>Mueve saldo de una cuenta wallet hacia uno de tus bolsillos activos.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_aporte_ahorro_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_aporte_ahorro" class="formulario" novalidate>
+            <label for="aporte_ahorro_cuenta_id">Cuenta origen</label>
+            <select id="aporte_ahorro_cuenta_id" name="aporte_ahorro_cuenta_id" required></select>
+
+            <label for="aporte_ahorro_bolsillo_id">Bolsillo destino</label>
+            <select id="aporte_ahorro_bolsillo_id" name="aporte_ahorro_bolsillo_id" required></select>
+
+            <label for="aporte_ahorro_monto">Monto a ahorrar</label>
+            <input id="aporte_ahorro_monto" name="aporte_ahorro_monto" type="number" min="1" step="0.01" placeholder="50.00" required>
+
+            <button type="submit" class="boton boton-secundario">Mover a ahorro</button>
+            <p id="mensaje_aporte_ahorro_modal" class="texto_estado_formulario ayuda_formulario">Elige primero el bolsillo destino para mover saldo desde una cuenta activa.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_vincular_servicio_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Vincular servicio</h2>
+                <p>Guarda contratos o cuentas para pagarlos mas rapido desde tu wallet.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_vincular_servicio_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_vincular_servicio" class="formulario" novalidate>
+            <label for="servicio_proveedor_id">Proveedor</label>
+            <select id="servicio_proveedor_id" name="servicio_proveedor_id" required></select>
+
+            <label for="servicio_alias">Alias del servicio</label>
+            <input id="servicio_alias" name="servicio_alias" type="text" placeholder="Internet casa">
+
+            <label for="servicio_identificador">Numero de contrato o cliente</label>
+            <input id="servicio_identificador" name="servicio_identificador" type="text" placeholder="00123456" required>
+
+            <label for="servicio_cuenta_id">Cuenta de cargo</label>
+            <select id="servicio_cuenta_id" name="servicio_cuenta_id" required></select>
+
+            <button type="submit" class="boton boton-primario">Vincular servicio</button>
+            <p id="mensaje_vincular_servicio_modal" class="texto_estado_formulario ayuda_formulario">El servicio quedara listo para futuros pagos rapidos desde la wallet.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_pagar_servicio_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Pagar servicio</h2>
+                <p>Paga servicios vinculados o procesa un pago puntual desde una cuenta activa.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_pagar_servicio_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_pago_servicio" class="formulario" novalidate>
+            <label for="pago_servicio_cuenta_id">Cuenta de cargo</label>
+            <select id="pago_servicio_cuenta_id" name="pago_servicio_cuenta_id" required></select>
+
+            <label for="pago_servicio_vinculado_id">Servicio vinculado</label>
+            <select id="pago_servicio_vinculado_id" name="pago_servicio_vinculado_id"></select>
+
+            <label for="pago_servicio_proveedor_id">O proveedor manual / adelanto</label>
+            <select id="pago_servicio_proveedor_id" name="pago_servicio_proveedor_id"></select>
+
+            <label for="pago_servicio_identificador">Contrato si no esta vinculado</label>
+            <input id="pago_servicio_identificador" name="pago_servicio_identificador" type="text" placeholder="00123456">
+
+            <label for="pago_servicio_monto">Monto</label>
+            <input id="pago_servicio_monto" name="pago_servicio_monto" type="number" min="1" step="0.01" placeholder="35.00" required>
+
+            <label for="pago_servicio_concepto">Concepto</label>
+            <input id="pago_servicio_concepto" name="pago_servicio_concepto" type="text" placeholder="Pago de servicio">
+
+            <button type="submit" class="boton boton-secundario">Pagar servicio</button>
+            <p id="mensaje_pagar_servicio_modal" class="texto_estado_formulario ayuda_formulario">Puedes pagar con un servicio vinculado o cargar manualmente un proveedor puntual.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal_adelanto_wallet" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+        <div class="modal_wallet_cabecera">
+            <div>
+                <h2>Solicitar adelanto</h2>
+                <p>Ingresa el monto que necesitas y revisa si tu cuenta califica para acreditarlo de inmediato.</p>
+            </div>
+            <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_adelanto_wallet" aria-label="Cerrar modal">&times;</button>
+        </div>
+        <div class="modal_wallet_contenido">
+        <form id="formulario_adelanto" class="formulario" novalidate>
+            <label for="adelanto_monto">Monto solicitado</label>
+            <input id="adelanto_monto" name="adelanto_monto" type="number" min="25" max="500" step="0.01" placeholder="150.00" required>
+
+            <button id="boton_solicitar_codigo_adelanto" type="button" class="boton boton-secundario">Enviar codigo al correo</button>
+
+            <label for="adelanto_codigo">Codigo recibido por correo</label>
+            <input id="adelanto_codigo" name="adelanto_codigo" type="text" inputmode="numeric" maxlength="6" placeholder="123456" required>
+
+            <button type="submit" class="boton boton-primario">Solicitar adelanto</button>
+            <p id="mensaje_adelanto_modal" class="texto_estado_formulario ayuda_formulario">Primero pide el codigo por correo y luego confirma el adelanto con ese codigo.</p>
+        </form>
+        </div>
+        </div>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>
 </body>
 </html>

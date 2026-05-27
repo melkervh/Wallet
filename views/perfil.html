@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Perfil</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="mercado_forex.html">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">0</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Perfil</h1>
+            <p>Ordena tu informacion personal, revisa tu acceso y manten tu avance dentro de la wallet sin tener toda la pantalla cargada.</p>
+        </header>
+
+        <section class="rejilla_perfil">
+            <div class="perfil_columna_principal">
+                <article class="tarjeta bloque_banco perfil_panel_principal">
+                    <div class="perfil_encabezado">
+                        <div id="perfil_avatar" class="perfil_avatar_marco">
+                            <span class="perfil_avatar_iniciales">WD</span>
+                        </div>
+                        <div class="perfil_encabezado_texto">
+                            <h2 id="texto_nombre_perfil">Tu perfil</h2>
+                            <p id="texto_correo_perfil">correo@wallet.com</p>
+                            <p id="texto_estado_perfil">Cuenta activa</p>
+                        </div>
+                    </div>
+
+                    <form id="formulario_perfil" class="formulario" novalidate>
+                        <details class="bloque_desplegable bloque_desplegable_perfil" open>
+                            <summary class="resumen_desplegable">
+                                <span class="resumen_desplegable_texto">
+                                    <span class="titulo_desplegable">Datos personales</span>
+                                    <span id="meta_perfil_datos" class="subtitulo_desplegable">Nombre, telefono y documento de tu cuenta.</span>
+                                </span>
+                                <span class="indicador_desplegable" aria-hidden="true"></span>
+                            </summary>
+                            <div class="contenido_desplegable contenido_desplegable_perfil">
+                                <div class="rejilla_campos_dobles">
+                                    <div>
+                                        <label for="perfil_nombres">Nombres</label>
+                                        <input id="perfil_nombres" name="perfil_nombres" type="text" placeholder="Tus nombres" maxlength="80" autocomplete="given-name" required>
+                                    </div>
+                                    <div>
+                                        <label for="perfil_apellidos">Apellidos</label>
+                                        <input id="perfil_apellidos" name="perfil_apellidos" type="text" placeholder="Tus apellidos" maxlength="80" autocomplete="family-name" required>
+                                    </div>
+                                </div>
+
+                                <div class="rejilla_campos_dobles">
+                                    <div>
+                                        <label for="perfil_correo">Correo</label>
+                                        <input id="perfil_correo" name="perfil_correo" type="email" readonly>
+                                    </div>
+                                    <div class="campo_telefono_compuesto">
+                                        <span class="campo_telefono_etiqueta">Telefono</span>
+                                        <div class="campo_telefono_compuesto_interior">
+                                            <div>
+                                                <label for="perfil_prefijo_telefono">Pais</label>
+                                                <select id="perfil_prefijo_telefono" name="perfil_prefijo_telefono" autocomplete="off"></select>
+                                            </div>
+                                            <div>
+                                                <label for="perfil_telefono">Numero</label>
+                                                <input id="perfil_telefono" name="perfil_telefono" type="text" placeholder="70000000" maxlength="15" inputmode="numeric" autocomplete="tel-local">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rejilla_campos_dobles">
+                                    <div>
+                                        <label for="perfil_fecha_nacimiento">Fecha de nacimiento</label>
+                                        <input id="perfil_fecha_nacimiento" name="perfil_fecha_nacimiento" type="date">
+                                    </div>
+                                    <div>
+                                        <label for="perfil_documento">Documento</label>
+                                        <input id="perfil_documento" name="perfil_documento" type="text" placeholder="12345678-9" maxlength="10" inputmode="numeric" autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="perfil_direccion">Direccion</label>
+                                    <input id="perfil_direccion" name="perfil_direccion" type="text" placeholder="Tu direccion actual" maxlength="300" autocomplete="street-address">
+                                </div>
+
+                            </div>
+                        </details>
+
+                        <details class="bloque_desplegable bloque_desplegable_perfil">
+                            <summary class="resumen_desplegable">
+                                <span class="resumen_desplegable_texto">
+                                    <span class="titulo_desplegable">Foto y privacidad</span>
+                                    <span id="meta_perfil_foto" class="subtitulo_desplegable">Aun no subes una foto a tu perfil.</span>
+                                </span>
+                                <span class="indicador_desplegable" aria-hidden="true"></span>
+                            </summary>
+                            <div class="contenido_desplegable contenido_desplegable_perfil">
+                                <div class="perfil_grupo_campos">
+                                    <label for="perfil_foto">Foto de perfil</label>
+                                    <div class="perfil_selector_foto">
+                                        <input id="perfil_foto" name="perfil_foto" type="file" accept="image/png,image/jpeg,image/webp" class="input_archivo_oculto">
+                                        <label for="perfil_foto" class="boton_archivo_estetico">
+                                            <span class="boton_archivo_icono" aria-hidden="true">+</span>
+                                            <span class="boton_archivo_texto">
+                                                <strong>Elegir imagen</strong>
+                                                <small>Usa una foto clara para personalizar mejor tu cuenta.</small>
+                                            </span>
+                                        </label>
+                                        <div class="tarjeta_archivo_perfil">
+                                            <span class="etiqueta_archivo_perfil">Archivo actual</span>
+                                            <strong id="texto_archivo_perfil" class="texto_archivo_perfil">Ningun archivo seleccionado</strong>
+                                            <span class="texto_archivo_auxiliar">JPG, PNG o WEBP hasta 5 MB.</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="fila_control_login" for="perfil_eliminar_foto">
+                                    <input id="perfil_eliminar_foto" name="perfil_eliminar_foto" type="checkbox">
+                                    <span>Quitar la foto actual</span>
+                                </label>
+                            </div>
+                        </details>
+
+                        <button type="submit" class="boton boton-primario">Guardar cambios</button>
+                    </form>
+
+                    <p id="mensaje_perfil" class="texto_estado_formulario">Tus cambios se guardaran en la base y la foto se almacenara en la carpeta del proyecto.</p>
+                </article>
+
+                <article class="tarjeta bloque_banco perfil_bloque_seguridad">
+                    <details class="bloque_desplegable bloque_desplegable_perfil">
+                        <summary class="resumen_desplegable">
+                            <span class="resumen_desplegable_texto">
+                                <span class="titulo_desplegable">Trofeos</span>
+                                <span id="meta_trofeos_perfil" class="subtitulo_desplegable">Tus desbloqueos se veran aqui cuando avances.</span>
+                            </span>
+                            <span class="indicador_desplegable" aria-hidden="true"></span>
+                        </summary>
+                        <div class="contenido_desplegable contenido_desplegable_perfil">
+                            <ul id="lista_trofeos_perfil" class="lista_trofeos_perfil">
+                                <li class="trofeo_item">
+                                    <strong>Cargando trofeos...</strong>
+                                    <span>Estamos revisando tu avance en Forex, ahorro y simulaciones.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </article>
+            </div>
+
+            <aside class="perfil_columna_resumen">
+                <article class="tarjeta bloque_banco">
+                    <details class="bloque_desplegable bloque_desplegable_perfil">
+                        <summary class="resumen_desplegable">
+                            <span class="resumen_desplegable_texto">
+                                <span class="titulo_desplegable">Seguridad y acceso</span>
+                                <span id="meta_seguridad_perfil" class="subtitulo_desplegable">Revisa tu ultima actividad y gestiona la recuperacion por PIN.</span>
+                            </span>
+                            <span class="indicador_desplegable" aria-hidden="true"></span>
+                        </summary>
+                        <div class="contenido_desplegable contenido_desplegable_perfil">
+                            <div class="cabecera_panel_accion cabecera_panel_accion_apilada">
+                                <p class="texto-secundario">Desde aqui revisas la salud de tu acceso y lanzas la recuperacion por PIN.</p>
+                                <button id="boton_abrir_modal_recuperacion_seguridad" type="button" class="boton boton-secundario">Recuperar contrasena</button>
+                            </div>
+                            <ul id="lista_seguridad_perfil" class="lista_texto lista_estado_seguridad">
+                                <li>
+                                    <strong>Cargando seguridad...</strong>
+                                    <span>Estamos consultando la informacion de acceso de tu cuenta.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </article>
+
+                <article class="tarjeta bloque_banco">
+                    <details class="bloque_desplegable bloque_desplegable_perfil">
+                        <summary class="resumen_desplegable">
+                            <span class="resumen_desplegable_texto">
+                                <span class="titulo_desplegable">Panel personal</span>
+                                <span id="meta_panel_perfil" class="subtitulo_desplegable">Resumen compacto de tu avance en wallet y estudio.</span>
+                            </span>
+                            <span class="indicador_desplegable" aria-hidden="true"></span>
+                        </summary>
+                        <div class="contenido_desplegable contenido_desplegable_perfil">
+                            <ul id="lista_logros_perfil" class="lista_resumen_perfil">
+                                <li>
+                                    <strong>Cargando logros...</strong>
+                                    <span>Estamos calculando tu avance en favoritos, wallet y Forex.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </article>
+
+                <article class="tarjeta bloque_banco">
+                    <details class="bloque_desplegable bloque_desplegable_perfil">
+                        <summary class="resumen_desplegable">
+                            <span class="resumen_desplegable_texto">
+                                <span class="titulo_desplegable">Accesos recientes</span>
+                                <span id="meta_accesos_perfil" class="subtitulo_desplegable">Tu historial reciente aparecera aqui.</span>
+                            </span>
+                            <span class="indicador_desplegable" aria-hidden="true"></span>
+                        </summary>
+                        <div class="contenido_desplegable contenido_desplegable_perfil">
+                            <ul id="lista_accesos_perfil" class="lista_accesos_perfil">
+                                <li>
+                                    <strong>Cargando accesos...</strong>
+                                    <span>Espera un momento mientras consultamos tu historial.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </article>
+            </aside>
+        </section>
+
+        <dialog id="modal_recuperacion_seguridad" class="modal_wallet">
+            <div class="modal_wallet_panel modal_wallet_panel_compacto">
+            <div class="modal_wallet_cabecera">
+                <div>
+                    <h2>Recuperar contrasena</h2>
+                    <p>Solicita tu PIN por correo, validalo y luego define una nueva contrasena desde este mismo modal.</p>
+                </div>
+                <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_recuperacion_seguridad" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal_wallet_contenido">
+            <form id="formulario_recuperacion_modal" class="formulario" novalidate>
+                <label for="recuperacion_modal_correo">Correo de recuperacion</label>
+                <input id="recuperacion_modal_correo" name="recuperacion_modal_correo" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                <button type="submit" class="boton boton-primario">Enviar PIN por correo</button>
+                <p id="mensaje_recuperacion_modal" class="texto_estado_formulario ayuda_formulario">Te enviaremos un PIN temporal al correo asociado a tu cuenta.</p>
+            </form>
+
+            <form id="formulario_reset_modal" class="formulario" novalidate>
+                <label for="reset_modal_correo">Correo</label>
+                <input id="reset_modal_correo" name="reset_modal_correo" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                <label for="reset_modal_pin">PIN recibido</label>
+                <input id="reset_modal_pin" name="reset_modal_pin" type="text" inputmode="numeric" maxlength="6" placeholder="123456" required>
+
+                <button id="boton_validar_pin_modal" type="button" class="boton boton-secundario">Validar PIN</button>
+
+                <div id="bloque_campos_password_reset_modal" class="rejilla_campos_dobles bloque_password_reset bloque_password_reset_bloqueado" aria-disabled="true">
+                    <div>
+                        <label for="reset_modal_nueva_contrasena">Nueva contrasena</label>
+                        <input id="reset_modal_nueva_contrasena" name="reset_modal_nueva_contrasena" type="password" placeholder="Nueva contrasena" required>
+                    </div>
+                    <div>
+                        <label for="reset_modal_confirmacion_contrasena">Confirmar contrasena</label>
+                        <input id="reset_modal_confirmacion_contrasena" name="reset_modal_confirmacion_contrasena" type="password" placeholder="Repite la nueva contrasena" required>
+                    </div>
+                </div>
+
+                <button id="boton_confirmar_reset_modal" type="submit" class="boton boton-primario" disabled>Cambiar contrasena</button>
+                <p id="mensaje_reset_modal" class="texto_estado_formulario ayuda_formulario">Primero valida tu PIN y luego se habilitara el cambio de contrasena.</p>
+            </form>
+            </div>
+            </div>
+        </dialog>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>

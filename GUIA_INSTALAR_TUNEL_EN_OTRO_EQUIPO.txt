@@ -1,0 +1,492 @@
+GUIA PARA INSTALAR Y USAR EL TUNEL EN OTRO EQUIPO
+Proyecto: Wallet Digital
+Ruta del proyecto de referencia: C:\Users\jorge\OneDrive\Desktop\Wallet
+
+======================================================================
+0. ARRANQUE RAPIDO CON COMANDOS
+======================================================================
+Si lo que quieres es verlo funcionando rapido en otro equipo, este es el
+orden correcto de comandos.
+
+0.1 Entrar a la carpeta del proyecto
+Comando:
+
+cd C:\ruta\del\proyecto\Wallet
+
+0.2 Instalar dependencias si aun no existen
+Comando:
+
+npm.cmd install
+
+0.3 Levantar el backend en modo desarrollo
+Comando:
+
+npm.cmd run dev
+
+Este proyecto tiene este script real:
+
+- "dev": "node --watch server.js"
+
+Si no quieres watch y prefieres modo normal:
+Comando:
+
+npm.cmd start
+
+Este proyecto tiene este script real:
+
+- "start": "node server.js"
+
+0.4 Validar backend local
+Abrir:
+
+http://127.0.0.1:3000/api/health
+
+0.5 Instalar cloudflared si el equipo no lo tiene
+Comando:
+
+winget install --id Cloudflare.cloudflared
+
+0.6 Crear el tunel rapido
+Comando:
+
+cloudflared.exe tunnel --url http://127.0.0.1:3000
+
+0.7 Copiar la URL publica generada
+Ejemplo:
+
+https://algo.trycloudflare.com
+
+0.8 Colocar esa URL en .env
+Variable:
+
+APP_BASE_URL=https://algo.trycloudflare.com
+
+0.9 Reiniciar el backend para que tome la URL publica
+Comando:
+
+npm.cmd run dev
+
+o si lo prefieres:
+
+npm.cmd start
+
+0.10 Probar el tunel ya configurado
+Abrir:
+
+https://algo.trycloudflare.com/api/health
+
+Si eso responde bien, los correos y enlaces ya no apuntaran a localhost.
+
+
+======================================================================
+1. OBJETIVO
+======================================================================
+Este archivo explica como dejar funcionando el tunel publico en otro equipo
+cuando ese equipo no tiene cloudflared instalado.
+
+La guia esta pensada para Windows, porque este proyecto se esta trabajando
+en Windows.
+
+El tunel se usa para que los enlaces enviados por correo no apunten a:
+
+- http://localhost:3000
+
+sino a una URL publica accesible desde internet, por ejemplo:
+
+- https://algo.trycloudflare.com
+
+
+======================================================================
+2. CUANDO NECESITAS EL TUNEL
+======================================================================
+Necesitas el tunel cuando:
+
+- vas a abrir la app solo en tu maquina local
+- pero el correo de recuperacion o cualquier enlace debe abrirse desde otro
+  dispositivo, como celular, tablet o una laptop externa
+
+No necesitas tunel si:
+
+- la app ya esta desplegada en un hosting publico como Render
+- y APP_BASE_URL ya apunta a una URL publica real
+
+
+======================================================================
+3. QUE ES LO QUE DEBE ESTAR LISTO ANTES
+======================================================================
+Antes de crear el tunel, el otro equipo debe tener:
+
+1. Node.js instalado
+2. PostgreSQL accesible
+3. el proyecto Wallet Digital descargado
+4. el archivo .env configurado
+5. el backend funcionando con:
+   npm.cmd run dev
+   o
+   npm.cmd start
+
+Prueba minima local:
+
+- abrir en navegador:
+  http://127.0.0.1:3000/api/health
+
+Si responde algo como:
+
+- {"ok":true,"service":"wallet-api"}
+
+entonces el backend ya esta listo para tunel.
+
+
+======================================================================
+4. FORMA MAS SIMPLE DE INSTALAR CLOUDLARED EN WINDOWS
+======================================================================
+Segun la documentacion oficial de Cloudflare, en Windows puedes instalar
+cloudflared con winget o descargando el ejecutable.
+
+Opcion A: con winget
+Comando:
+
+winget install --id Cloudflare.cloudflared
+
+Opcion B: descarga manual
+Debes bajar el ejecutable oficial de cloudflared para Windows y guardarlo,
+idealmente con el nombre:
+
+cloudflared.exe
+
+Referencia oficial:
+- Cloudflare Downloads
+- pagina oficial de descargas de cloudflared
+
+Despues de instalar, valida con:
+
+cloudflared --version
+
+Si el sistema responde la version, ya esta instalado.
+
+
+======================================================================
+5. SI EL COMANDO NO ES RECONOCIDO
+======================================================================
+Si PowerShell dice que cloudflared no existe:
+
+1. cierra y abre otra terminal
+2. vuelve a probar:
+   cloudflared --version
+3. si sigue sin funcionar, ubica el ejecutable manualmente
+
+Ejemplo de ruta comun:
+
+C:\Program Files (x86)\cloudflared\cloudflared.exe
+
+Entonces puedes correrlo asi:
+
+"C:\Program Files (x86)\cloudflared\cloudflared.exe" --version
+
+Si eso si funciona, el equipo tiene cloudflared pero la ruta no esta en PATH.
+
+
+======================================================================
+6. FORMA RAPIDA DE LEVANTAR EL TUNEL PARA DEMO
+======================================================================
+Este es el metodo mas simple y el que conviene para pruebas o demo
+universitaria.
+
+Paso 1. levantar el backend
+Comando:
+
+npm.cmd run dev
+
+Alternativa sin watch:
+
+npm.cmd start
+
+Paso 2. abrir otra terminal
+
+Paso 3. crear el tunel rapido
+Comando:
+
+cloudflared.exe tunnel --url http://127.0.0.1:3000
+
+Paso 4. esperar la URL publica
+Cloudflared mostrara una URL parecida a:
+
+https://ejemplo.trycloudflare.com
+
+Paso 5. copiar esa URL
+
+Paso 6. colocarla en el archivo .env
+Variable:
+
+APP_BASE_URL=https://ejemplo.trycloudflare.com
+
+Paso 7. reiniciar el backend
+Debes cerrar y volver a levantar:
+
+npm.cmd run dev
+
+o
+
+npm.cmd start
+
+Esto es importante porque backend/env.js lee APP_BASE_URL al iniciar.
+
+Paso 8. probar la URL publica
+Abre:
+
+https://ejemplo.trycloudflare.com/api/health
+
+Si responde el health JSON, el tunel ya esta funcionando.
+
+
+======================================================================
+7. COMO SABER SI EL TUNEL QUEDO BIEN
+======================================================================
+Debes validar estas 3 cosas:
+
+1. Localhost responde
+- http://127.0.0.1:3000/api/health
+
+2. URL publica responde
+- https://tu-url.trycloudflare.com/api/health
+
+3. El .env tiene la URL correcta
+- APP_BASE_URL=https://tu-url.trycloudflare.com
+
+Si falta cualquiera de esas tres, el enlace de los correos puede abrir
+algo roto o apuntar a localhost.
+
+
+======================================================================
+8. SI EL CORREO SIGUE ABRIENDO LOCALHOST
+======================================================================
+Las causas mas comunes son estas:
+
+1. el tunel se creo despues de enviar el correo
+   Solucion:
+   vuelve a pedir el correo de recuperacion despues de dejar bien el tunel
+
+2. APP_BASE_URL sigue en localhost
+   Solucion:
+   cambia APP_BASE_URL en .env y reinicia npm.cmd run dev o npm.cmd start
+
+3. el tunel cambio de URL
+   Solucion:
+   actualiza APP_BASE_URL con la URL nueva y reinicia backend
+
+4. el backend no se reinicio
+   Solucion:
+   detener y volver a correr npm.cmd run dev o npm.cmd start
+
+
+======================================================================
+9. LIMITACION DEL QUICK TUNNEL
+======================================================================
+El quick tunnel sirve para desarrollo y prueba, pero no es la opcion mas
+estable para uso continuo.
+
+Importante:
+
+- la URL puede cambiar al reiniciarlo
+- no tiene garantia de permanencia
+- si cierras cloudflared, el enlace deja de existir
+
+Esto esta bien para:
+
+- demo universitaria
+- pruebas funcionales
+- revision desde celular
+
+
+======================================================================
+10. FORMA MAS ESTABLE: TUNEL COMO SERVICIO
+======================================================================
+Si el otro equipo va a usar el tunel por mas tiempo, Cloudflare recomienda
+instalarlo como servicio.
+
+Hay dos escenarios:
+
+10.1 Tunel rapido para demo
+- no requiere cuenta Cloudflare
+- no requiere dominio propio
+- comando simple:
+  cloudflared tunnel --url http://127.0.0.1:3000
+
+10.2 Tunel administrado o mas estable
+- requiere cuenta Cloudflare
+- puede requerir dominio o configuracion desde Cloudflare
+- puede instalarse como servicio en Windows
+
+La idea general es:
+
+1. instalar cloudflared
+2. crear o registrar el tunel
+3. obtener token o credenciales
+4. instalar el servicio con cloudflared
+
+Comando que la documentacion oficial muestra para servicio administrado:
+
+cloudflared.exe service install <TUNNEL_TOKEN>
+
+Eso ya es para un tunel estable, no para el trycloudflare rapido.
+
+
+======================================================================
+11. PASOS RECOMENDADOS PARA ESTE PROYECTO
+======================================================================
+Si solo quieres replicar la demo en otra PC, usa esta receta:
+
+1. Clonar o copiar el proyecto Wallet
+2. Configurar .env
+3. Levantar PostgreSQL o apuntar DATABASE_URL a una base disponible
+4. Correr:
+   npm.cmd run dev
+5. Verificar:
+   http://127.0.0.1:3000/api/health
+6. Instalar cloudflared
+7. Correr:
+   cloudflared tunnel --url http://127.0.0.1:3000
+8. Copiar la URL trycloudflare
+9. Pegarla en:
+   APP_BASE_URL=...
+10. Reiniciar:
+   npm.cmd run dev
+11. Probar:
+   https://tu-url.trycloudflare.com/api/health
+12. Pedir un correo de recuperacion o codigo para validar que el enlace
+    ya sale publico
+
+
+======================================================================
+12. DONDE SE USA APP_BASE_URL EN ESTE PROYECTO
+======================================================================
+Archivo:
+- backend/env.js
+
+Variable:
+- config.appBaseUrl
+
+Uso directo principal:
+- backend/models/auth.model.js
+
+Funcion:
+- requestPasswordReset()
+
+Ahi se arma el enlace de recuperacion:
+
+${config.appBaseUrl}/views/login.html?modo=reset&correo=...
+
+Esto significa que si APP_BASE_URL esta mal:
+
+- el correo saldra con localhost
+- o con una URL vieja del tunel
+
+
+======================================================================
+13. COMO DETENER EL TUNEL
+======================================================================
+Si el tunel se levanto en una terminal abierta:
+
+- cierra esa terminal
+o
+- presiona Ctrl + C
+
+Si quedo corriendo en segundo plano:
+
+- busca el proceso cloudflared y finalizalo
+
+En PowerShell:
+
+Get-Process cloudflared
+
+y luego:
+
+Stop-Process -Name cloudflared -Force
+
+
+======================================================================
+14. PROBLEMAS COMUNES Y SOLUCIONES
+======================================================================
+
+Problema:
+- cloudflared no existe
+Solucion:
+- instalar con winget o descargar el exe oficial
+
+Problema:
+- el tunel abre pero da 502
+Solucion:
+- verificar que node server.js siga vivo
+- verificar que localhost:3000 responda
+- recrear el tunel
+
+Problema:
+- el correo sigue con localhost
+Solucion:
+- corregir APP_BASE_URL
+- reiniciar backend
+- volver a generar el correo
+
+Problema:
+- el tunel funcionaba y despues no
+Solucion:
+- los quick tunnels pueden expirar o cambiar
+- crear otro y actualizar APP_BASE_URL
+
+Problema:
+- el navegador abre pero no carga estilos o recursos
+Solucion:
+- revisar que server.js siga sirviendo archivos de views y recursos
+- probar:
+  https://tu-url.trycloudflare.com/views/login.html
+
+
+======================================================================
+15. COMANDOS UTILES
+======================================================================
+
+Ver version de cloudflared:
+cloudflared.exe --version
+
+Levantar backend:
+npm.cmd run dev
+
+Levantar backend sin watch:
+npm.cmd start
+
+Probar backend local:
+http://127.0.0.1:3000/api/health
+
+Crear tunel rapido:
+cloudflared.exe tunnel --url http://127.0.0.1:3000
+
+Detener cloudflared en segundo plano:
+Stop-Process -Name cloudflared -Force
+
+
+======================================================================
+16. RECOMENDACION FINAL
+======================================================================
+Para este proyecto:
+
+- usa quick tunnel si solo es para exposicion o demo
+- usa APP_BASE_URL con la URL publica actual
+- reinicia siempre npm.cmd run dev o npm.cmd start despues de cambiar APP_BASE_URL
+
+Si mas adelante quieres algo mas estable:
+
+- sube la app a un hosting publico
+o
+- crea un tunel administrado de Cloudflare como servicio
+
+
+======================================================================
+17. REFERENCIA OFICIAL CONSULTADA
+======================================================================
+Se tomo como base la documentacion oficial de Cloudflare sobre:
+
+- descarga e instalacion de cloudflared en Windows
+- quick tunnels con trycloudflare
+- ejecucion como servicio en Windows
+
+Fin del documento.

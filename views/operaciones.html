@@ -18,20 +18,18 @@
                 <a href="principal.html">Wallet</a>
                 <a href="operaciones.html" class="enlace_activo">Transferencias</a>
                 <a href="movimientos.html">Movimientos</a>
-                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="mercado_forex.html">Modulo Forex</a>
                 <a href="simulador_inversion.html">Simulador Forex</a>
             </nav>
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
-                    <span class="contador_alertas">3</span>
+                    <span class="contador_alertas">0</span>
                 </button>
                 <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
                     <h3>Alertas</h3>
                     <ul class="lista_alertas_superior">
-                        <li>Transferencia completada.</li>
-                        <li>Pago programado para el 12 de marzo.</li>
-                        <li>Nuevo acceso reconocido.</li>
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
                     </ul>
                 </section>
             </div>
@@ -54,7 +52,10 @@
                 </h2>
                 <form id="formulario_transferencia" class="formulario" novalidate>
                     <label for="cuenta_origen_transferencia">Cuenta origen</label>
-                    <input id="cuenta_origen_transferencia" name="cuenta_origen_transferencia" type="text" placeholder="Wallet Principal" required>
+                    <select id="cuenta_origen_transferencia" name="cuenta_origen_transferencia" required></select>
+
+                    <label for="beneficiario_favorito_transferencia">Favorito para enviar</label>
+                    <select id="beneficiario_favorito_transferencia" name="beneficiario_favorito_transferencia"></select>
 
                     <label for="tipo_transferencia">Tipo de transferencia</label>
                     <select id="tipo_transferencia" name="tipo_transferencia" required>
@@ -69,7 +70,12 @@
                     <input id="destinatario_transferencia" name="destinatario_transferencia" type="text" placeholder="Nombre completo" required>
 
                     <label for="banco_destino_transferencia">Banco o wallet destino</label>
-                    <input id="banco_destino_transferencia" name="banco_destino_transferencia" type="text" placeholder="Banco Ejemplo" required>
+                    <select id="banco_destino_transferencia" name="banco_destino_transferencia" required>
+                        <option value="">Selecciona un banco o wallet</option>
+                    </select>
+
+                    <label for="numero_cuenta_destino_transferencia">Numero de cuenta destino</label>
+                    <input id="numero_cuenta_destino_transferencia" name="numero_cuenta_destino_transferencia" type="text" placeholder="0000-0000-0000" required>
 
                     <label for="monto_transferencia">Monto</label>
                     <input id="monto_transferencia" name="monto_transferencia" type="number" min="1" step="0.01" placeholder="Ejemplo: 150.00" required>
@@ -87,9 +93,14 @@
                     <label for="referencia_transferencia">Referencia interna</label>
                     <input id="referencia_transferencia" name="referencia_transferencia" type="text" placeholder="Ejemplo: FACT-2031">
 
+                    <label class="fila_control_login" for="guardar_beneficiario_favorito">
+                        <input id="guardar_beneficiario_favorito" name="guardar_beneficiario_favorito" type="checkbox">
+                        <span>Guardar este destinatario como favorito</span>
+                    </label>
+
                     <button type="submit" class="boton boton-primario">Confirmar transferencia</button>
                 </form>
-                <p id="texto_estado_transferencia" class="texto-secundario">Sin transferencias nuevas en esta sesion.</p>
+                <p id="texto_estado_transferencia" class="texto_estado_formulario">Selecciona cuenta, completa el destino y confirma la operacion.</p>
             </article>
 
             <article class="tarjeta bloque_banco">
@@ -114,6 +125,7 @@
         </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>
 </body>
 </html>

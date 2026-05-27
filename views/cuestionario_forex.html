@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Cuestionario Forex</title>
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <nav id="menu_superior" class="menu_superior">
+                <a href="principal.html">Wallet</a>
+                <a href="operaciones.html">Transferencias</a>
+                <a href="movimientos.html">Movimientos</a>
+                <a href="cuestionario_forex.html" class="enlace_activo">Modulo Forex</a>
+                <a href="simulador_inversion.html">Simulador Forex</a>
+            </nav>
+            <div class="contenedor_alertas">
+                <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                    <span class="contador_alertas">0</span>
+                </button>
+                <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
+                    <h3>Alertas</h3>
+                    <ul class="lista_alertas_superior">
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu">
+        <header class="cabecera-principal cabecera_destacada">
+            <h1>Cuestionario Forex</h1>
+            <p>Responde el cuestionario del modulo activo. Una nota sobresaliente desbloquea la siguiente documentacion y suma trofeos a tu perfil.</p>
+        </header>
+
+        <section class="layout_forex_academia">
+            <aside class="tarjeta bloque_banco barra_lateral_forex">
+                <div class="titulo_lateral_forex">
+                    <h2>Progreso evaluativo</h2>
+                    <p>Estudia primero el contenido y luego regresa aqui para validar si ya dominas el nivel.</p>
+                </div>
+
+                <label for="selector_par_forex">Par principal</label>
+                <select id="selector_par_forex">
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="EURGBP">EUR/GBP</option>
+                    <option value="USDJPY">USD/JPY</option>
+                </select>
+
+                <div class="panel_progreso_forex">
+                    <div class="encabezado_progreso_forex">
+                        <strong>Avance</strong>
+                        <span id="texto_progreso_forex">0%</span>
+                    </div>
+                    <div class="barra_progreso_forex">
+                        <span id="barra_progreso_forex"></span>
+                    </div>
+                    <p id="texto_logro_forex" class="texto_estado_formulario">Supera cada nivel con nota sobresaliente para abrir el siguiente bloque.</p>
+                </div>
+
+                <div id="contenedor_cursos_forex" class="lista_modulos_forex"></div>
+                <div class="panel_historial_forex">
+                    <h3>Historial reciente</h3>
+                    <ul id="lista_historial_forex" class="lista_texto"></ul>
+                </div>
+            </aside>
+
+            <div class="contenido_forex_principal">
+                <section class="tarjeta bloque_banco">
+                    <h2>Resumen del modulo</h2>
+                    <p id="texto_contenido_forex" class="texto-secundario">Selecciona un modulo para estudiar y responder su evaluacion.</p>
+                    <div class="tarjeta_resumen_forex">
+                        <h3>Checklist del nivel</h3>
+                        <ul id="lista_checklist_forex" class="lista_texto"></ul>
+                    </div>
+                </section>
+
+                <section class="tarjeta bloque_banco">
+                    <h2>Evaluacion del modulo</h2>
+                    <form id="formulario_quiz_forex" class="formulario" novalidate>
+                        <div id="contenedor_quiz_forex" class="lista_quiz_forex"></div>
+                        <button type="submit" class="boton boton-primario">Validar respuestas</button>
+                    </form>
+                    <p id="mensaje_quiz_forex" class="texto_estado_formulario">Responde correctamente para marcar el modulo como superado.</p>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../recursos/scripts/funcionalidad_global.js"></script>
+</body>
+</html>

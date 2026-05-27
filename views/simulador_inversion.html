@@ -19,20 +19,18 @@
                 <a href="principal.html">Wallet</a>
                 <a href="operaciones.html">Transferencias</a>
                 <a href="movimientos.html">Movimientos</a>
-                <a href="aprendizaje_forex.html">Modulo Forex</a>
+                <a href="mercado_forex.html">Modulo Forex</a>
                 <a href="simulador_inversion.html" class="enlace_activo">Simulador Forex</a>
             </nav>
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
-                    <span class="contador_alertas">3</span>
+                    <span class="contador_alertas">0</span>
                 </button>
                 <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
                     <h3>Alertas</h3>
                     <ul class="lista_alertas_superior">
-                        <li>Transferencia completada.</li>
-                        <li>Pago programado para el 12 de marzo.</li>
-                        <li>Nuevo acceso reconocido.</li>
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
                     </ul>
                 </section>
             </div>
@@ -42,50 +40,113 @@
     <main class="contenedor contenedor_con_menu">
         <header class="cabecera-principal cabecera_destacada">
             <h1>Simulador Forex</h1>
-            <p>Practica escenarios de riesgo con apoyo visual antes de operar en real.</p>
+            <p>Convierte el mercado real en un escenario de practica: primero entiendes el contexto, luego eliges tu riesgo y al final comparas como se habria comportado tu capital.</p>
         </header>
 
-        <section class="rejilla_operaciones">
-            <article class="tarjeta bloque_banco">
-                <h2>Configurar simulacion</h2>
+        <section class="layout_simulador_forex">
+            <article class="tarjeta bloque_banco panel_simulador_formulario">
+                <div class="cabecera_modulo_operativo">
+                    <p class="etiqueta_pequena">Paso 1</p>
+                    <h2>Configura tu escenario</h2>
+                    <p>Elige el par, define si tu idea seria de compra o venta y fija cuanto capital estarias dispuesto a exponer.</p>
+                </div>
                 <form id="formulario_simulador" class="formulario" novalidate>
+                    <label for="par_simulacion_forex">Par de mercado</label>
+                    <select id="par_simulacion_forex" name="par_simulacion_forex">
+                        <option value="EURUSD">EUR/USD</option>
+                        <option value="GBPUSD">GBP/USD</option>
+                        <option value="EURGBP">EUR/GBP</option>
+                        <option value="USDJPY">USD/JPY</option>
+                    </select>
+
+                    <label for="direccion_simulacion">Direccion</label>
+                    <select id="direccion_simulacion" name="direccion_simulacion">
+                        <option value="buy">Compra</option>
+                        <option value="sell">Venta</option>
+                    </select>
+
                     <label for="capital_inicial">Capital inicial</label>
                     <input id="capital_inicial" name="capital_inicial" type="number" min="1" placeholder="Ejemplo: 1000" required>
 
                     <label for="porcentaje_riesgo">Riesgo por operacion (%)</label>
                     <input id="porcentaje_riesgo" name="porcentaje_riesgo" type="number" min="1" max="100" placeholder="Ejemplo: 2" required>
 
-                    <label for="cantidad_operaciones">Cantidad de operaciones</label>
-                    <input id="cantidad_operaciones" name="cantidad_operaciones" type="number" min="1" placeholder="Ejemplo: 10" required>
-
                     <button type="submit" class="boton boton-primario">Calcular simulacion</button>
                 </form>
-                <p id="texto_resultado_simulacion" class="texto-secundario">Aun no hay resultados.</p>
+                <div class="bloque_resultado_simulador">
+                    <p class="etiqueta_pequena">Lectura del escenario</p>
+                    <p id="texto_resultado_simulacion" class="texto-secundario">Aun no has ejecutado una simulacion. Cuando pulses calcular, te explicare de forma simple que habria pasado con tu idea.</p>
+                </div>
+                <div class="tarjeta_resumen_forex">
+                    <h3>Checklist previa</h3>
+                    <ul id="lista_plan_simulacion" class="lista_texto"></ul>
+                </div>
             </article>
 
-            <article class="tarjeta bloque_banco">
-                <h2>Diario de simulacion</h2>
-                <ul class="lista_texto" id="lista_diario_simulacion"></ul>
+            <article class="tarjeta bloque_banco panel_simulador_contexto">
+                <div class="cabecera_modulo_operativo">
+                    <p class="etiqueta_pequena">Paso 2</p>
+                    <h2>Lee el mercado antes de decidir</h2>
+                    <p>Esta columna te da el resumen del par activo para que tu simulacion no salga de la nada.</p>
+                </div>
+                <p id="texto_resumen_simulador_mercado" class="texto-secundario">Cargando referencia del par seleccionado...</p>
+                <div id="contenedor_metricas_simulacion" class="rejilla_metricas_forex"></div>
+                <div class="tarjeta_resumen_forex">
+                    <h3>Senales y notas</h3>
+                    <ul id="lista_senales_simulacion" class="lista_texto"></ul>
+                </div>
+                <div class="tarjeta_resumen_forex">
+                    <h3>Historial local</h3>
+                    <ul id="lista_historial_simulacion" class="lista_texto"></ul>
+                </div>
             </article>
         </section>
 
-        <section class="rejilla-tarjetas">
+        <section class="rejilla_operaciones rejilla_operaciones_simulador">
+            <article class="tarjeta bloque_banco">
+                <div class="cabecera_modulo_operativo">
+                    <p class="etiqueta_pequena">Paso 3</p>
+                    <h2>Interpretacion del resultado</h2>
+                    <p>En vez de dejarte solo un numero, aqui te explico como se comporto la idea que planteaste.</p>
+                </div>
+                <ul class="lista_texto" id="lista_diario_simulacion"></ul>
+            </article>
+
+            <article class="tarjeta bloque_banco">
+                <div class="cabecera_modulo_operativo">
+                    <p class="etiqueta_pequena">Lectura rapida</p>
+                    <h2>Resumen de ejecucion</h2>
+                    <p>Estas tarjetas resumen el riesgo asumido, el recorrido del escenario y la confianza aproximada del contexto.</p>
+                </div>
+                <div id="contenedor_tarjetas_simulacion" class="rejilla_metricas_forex"></div>
+            </article>
+        </section>
+
+        <section class="rejilla-tarjetas rejilla_tarjetas_simulador">
             <article class="tarjeta">
                 <h2>Curva de capital simulada</h2>
+                <p class="texto-secundario">Aqui veras como se habria movido tu capital desde la entrada hasta el cierre del escenario.</p>
                 <div class="contenedor_grafico">
-                    <canvas id="grafico_simulacion_capital" width="900" height="280"></canvas>
+                    <div id="estado_vacio_simulacion" class="estado_vacio_grafico">
+                        <strong>Aun no hay curva generada</strong>
+                        <span>Primero calcula una simulacion para ver la evolucion estimada de tu capital.</span>
+                    </div>
+                    <canvas id="grafico_simulacion_capital" height="280"></canvas>
                 </div>
             </article>
 
             <article class="tarjeta">
-                <h2>Precio de referencia (Demo)</h2>
+                <h2>Mercado de referencia</h2>
+                <p class="texto-secundario">Este grafico usa la serie del par activo para que compares tu idea contra el comportamiento reciente del mercado.</p>
                 <div class="contenedor_grafico">
-                    <canvas id="grafico_simulacion_velas" width="900" height="280"></canvas>
+                    <canvas id="grafico_simulacion_velas" height="280"></canvas>
                 </div>
             </article>
         </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>
 </body>
 </html>

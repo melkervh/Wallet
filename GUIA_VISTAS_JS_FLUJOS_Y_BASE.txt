@@ -1,0 +1,1691 @@
+GUIA TECNICA DE VISTAS, JS, FLUJOS BACKEND Y BASE DE DATOS
+Proyecto: Wallet Digital
+Ruta base del proyecto: C:\Users\jorge\OneDrive\Desktop\Wallet
+
+======================================================================
+1. OBJETIVO DE ESTE ARCHIVO
+======================================================================
+Este documento sirve para ubicar rapido:
+
+- que vista HTML existe y para que sirve
+- que JS interviene en cada pantalla
+- donde esta cada funcion importante del JS
+- como viajan los datos desde la vista hasta PostgreSQL
+- como levantar el proyecto en modo desarrollo
+- como levantar un tunel publico para correos y enlaces externos
+
+La idea es que puedas abrir este archivo y entender el flujo completo sin
+tener que adivinar donde esta cada cosa.
+
+
+======================================================================
+1.1 ACLARACION IMPORTANTE SOBRE MODALES, CONTROLLERS Y SQL
+======================================================================
+Si estabas buscando las cargas o inserciones directamente en los modales o
+en los controller, ahi no las vas a ver.
+
+Regla real del proyecto:
+
+- el modal solo captura datos en la vista
+- funcionalidad_global.js toma esos datos y llama a la API
+- server.js recibe la ruta
+- el controller solo delega
+- el model es donde vive el SQL real
+- db.js es donde esta la conexion y la transaccion
+
+En otras palabras:
+
+- los modales NO consultan PostgreSQL
+- los controller NO escriben SQL
+- los model SI hacen SELECT, INSERT, UPDATE y DELETE
+- db.js SI crea la conexion con new Pool(config.database)
+
+Ejemplos concretos:
+
+Conexion a la base:
+- backend/db.js:4 -> const pool = new Pool(config.database);
+- backend/db.js:8 -> query(text, params)
+- backend/db.js:15 -> withTransaction(callback)
+
+Configuracion de la base:
+- backend/env.js:57 -> connectionString: mergedEnv.DATABASE_URL
+- backend/env.js:60 -> host: mergedEnv.PGHOST || "127.0.0.1"
+
+Ejemplo de insercion real:
+- backend/models/auth.model.js:254 -> INSERT INTO usuarios
+- backend/models/auth.model.js:284 -> INSERT INTO usuarios_credenciales
+- backend/models/auth.model.js:298 -> INSERT INTO cuentas
+
+Ejemplo de lectura real:
+- backend/models/profile.model.js:162 -> FROM usuarios
+- backend/models/transfer.model.js:174 -> FROM cuentas
+- backend/models/base.model.js:1027 -> FROM transacciones
+
+Ejemplo de actualizacion real:
+- backend/models/profile.model.js:208 -> UPDATE usuarios
+- backend/models/transfer.model.js:266 -> UPDATE cuentas
+- backend/models/alerts.model.js:24 -> UPDATE alertas_usuario
+
+Ejemplo de borrado real:
+- backend/models/alerts.model.js:44 -> DELETE FROM alertas_usuario
+
+
+======================================================================
+2. ESTRUCTURA GENERAL DEL FRONTEND
+======================================================================
+Todas las vistas usan un solo archivo JS principal:
+
+- recursos/scripts/funcionalidad_global.js
+
+Ese archivo detecta la pagina actual y decide que inicializador correr con:
+
+- linea 67: iniciar_aplicacion()
+- linea 115: obtener_pagina_actual()
+
+La seleccion por pagina se hace asi:
+
+- login.html -> inicializar_login()
+- principal.html -> inicializar_principal()
+- perfil.html -> inicializar_perfil()
+- operaciones.html -> inicializar_transferencias()
+- movimientos.html -> inicializar_movimientos()
+- mercado_forex.html -> inicializar_portal_forex()
+- aprendizaje_forex.html -> inicializar_portal_forex()
+- cuestionario_forex.html -> inicializar_portal_forex()
+- simulador_inversion.html -> inicializar_simulador()
+
+Librerias usadas en frontend:
+
+- SweetAlert2 para confirmaciones y toasts
+- Chart.js para graficos de movimientos, forex y simulador
+
+SweetAlert2 se carga desde las vistas HTML por CDN, por ejemplo:
+
+- views/login.html
+- views/principal.html
+- views/perfil.html
+- views/operaciones.html
+- views/movimientos.html
+- views/mercado_forex.html
+- views/aprendizaje_forex.html
+- views/cuestionario_forex.html
+- views/simulador_inversion.html
+
+Y se ejecuta en el JS principal principalmente desde:
+
+- mostrar_toast_lateral() -> toast lateral
+- confirmar_accion() -> modal de confirmacion
+
+Importante:
+- SweetAlert2 no consulta la base
+- SweetAlert2 no hace SQL
+- SweetAlert2 solo muestra UI y devuelve la respuesta del usuario
+
+
+======================================================================
+3. VISTAS HTML Y JS QUE INTERVIENEN
+======================================================================
+Todas cargan:
+
+- ../recursos/scripts/funcionalidad_global.js
+
+Algunas tambien cargan:
+
+- Chart.js
+- SweetAlert2
+
+3.1 views/login.html
+- Funcion principal asociada: inicializar_login() en linea 883.
+- Sirve para:
+  - iniciar sesion
+  - registrar usuario
+  - pedir PIN de recuperacion
+  - confirmar PIN
+  - cambiar contrasena
+- Tambien depende de:
+  - aplicar_estado_bootstrap_login() linea 1112
+  - inicializar_flujo_pin_recuperacion() linea 1157
+  - validar_pin_recuperacion() linea 1237
+  - sincronizar_reset_desde_url() linea 4240
+  - mostrar_estado_sesion_desde_url() linea 4259
+
+3.2 views/principal.html
+- Funcion principal asociada: inicializar_principal() en linea 1267.
+- Sirve para:
+  - cargar dashboard general
+  - abrir centros de tarjetas, ahorros, servicios y adelanto
+  - gestionar modales internos de wallet
+- Tambien depende de:
+  - cargar_panel_wallet_completo() linea 1273
+  - renderizar_principal() linea 1294
+  - inicializar_formularios_principal() linea 1545
+  - inicializar_modales_wallet() linea 2122
+
+3.3 views/perfil.html
+- Funcion principal asociada: inicializar_perfil() en linea 2422.
+- Sirve para:
+  - mostrar y actualizar perfil
+  - subir foto de perfil
+  - ver trofeos y accesos recientes
+  - lanzar recuperacion de contrasena desde seguridad
+- Tambien depende de:
+  - renderizar_perfil() linea 2590
+  - renderizar_avatar_perfil() linea 2626
+  - renderizar_accesos_perfil() linea 2648
+  - renderizar_logros_perfil() linea 2779
+  - renderizar_trofeos_perfil() linea 2839
+
+3.4 views/operaciones.html
+- Funcion principal asociada: inicializar_transferencias() en linea 2950.
+- Sirve para:
+  - preparar la pantalla de transferencias
+  - cargar cuentas, favoritos y bancos
+  - guardar favoritos
+  - eliminar favoritos
+  - enviar transferencias
+- Tambien depende de:
+  - cargar_metadata_transferencias() linea 3026
+  - poblar_select_cuentas() linea 3043
+  - poblar_select_favoritos() linea 3056
+  - poblar_select_bancos() linea 3074
+  - eliminar_favorito() linea 3215
+
+3.5 views/movimientos.html
+- Funcion principal asociada: inicializar_movimientos() en linea 3256.
+- Sirve para:
+  - filtrar historial
+  - pintar tabla de movimientos
+  - mostrar graficos de ingresos, egresos y ahorro
+- Tambien depende de:
+  - cargar_movimientos_filtrados() linea 3276
+  - renderizar_tabla_movimientos() linea 3291
+  - renderizar_graficos_movimientos() linea 3363
+
+3.6 views/mercado_forex.html
+- Funcion principal asociada: inicializar_portal_forex() en linea 3457.
+- Sirve para:
+  - mostrar mercado actual
+  - consumir datos reales o de referencia
+  - mostrar resumen del par activo
+
+3.7 views/aprendizaje_forex.html
+- Funcion principal asociada: inicializar_portal_forex() en linea 3457.
+- Sirve para:
+  - mostrar modulos de estudio
+  - mostrar progreso del usuario
+  - activar modulo documental actual
+
+3.8 views/cuestionario_forex.html
+- Funcion principal asociada: inicializar_portal_forex() en linea 3457.
+- Sirve para:
+  - mostrar preguntas
+  - validar respuestas
+  - desbloquear progresion local
+
+3.9 views/simulador_inversion.html
+- Funcion principal asociada: inicializar_simulador() en linea 3860.
+- Sirve para:
+  - simular inversion forex
+  - consumir mercado de referencia
+  - calcular curva de capital
+  - guardar historial local de simulaciones
+
+
+======================================================================
+4. MAPA COMPLETO DE FUNCIONES DEL JS PRINCIPAL
+Archivo: recursos/scripts/funcionalidad_global.js
+======================================================================
+
+4.1 Nucleo de arranque y pagina actual
+- linea 67: iniciar_aplicacion()
+  Arranca toda la app en el navegador, detecta pagina, inicializa menu,
+  sesion, alertas, tema y luego llama al inicializador correcto.
+
+- linea 115: obtener_pagina_actual()
+  Extrae el nombre del archivo HTML actual desde window.location.pathname.
+
+- linea 120: obtener_token_sesion()
+  Lee el token guardado en localStorage.
+
+- linea 124: guardar_token_sesion(token)
+  Guarda el token de sesion en localStorage.
+
+- linea 128: limpiar_sesion_local()
+  Limpia token, sesion y perfil en memoria local.
+
+4.2 Tema visual
+- linea 135: cargar_preferencia_tema()
+  Lee el tema guardado en localStorage.
+
+- linea 140: guardar_preferencia_tema(tema)
+  Guarda el tema elegido en localStorage.
+
+- linea 144: aplicar_tema(tema)
+  Coloca el tema activo en document.documentElement.
+
+- linea 150: alternar_tema()
+  Cambia entre light y dark, guarda preferencia y redibuja graficos.
+
+- linea 158: inicializar_tema()
+  Llama al render del control superior de tema.
+
+- linea 162: actualizar_boton_tema()
+  Actualiza el texto, title y aria del boton de cambio de tema.
+
+4.3 Menu superior y avatar
+- linea 178: renderizar_controles_superiores()
+  Decide si arriba va boton de tema o avatar de usuario con submenu.
+
+- linea 257: construir_boton_tema_submenu()
+  Devuelve el HTML del boton de tema dentro del submenu del usuario.
+
+- linea 266: construir_avatar_superior(usuario)
+  Devuelve el HTML del avatar superior con iniciales.
+
+- linea 274: inicializar_cierre_submenu_usuario()
+  Cierra el submenu del usuario cuando se hace click fuera.
+
+- linea 295: icono_sol_svg(claseExtra)
+  Devuelve el SVG del icono de tema.
+
+- linea 299: icono_configuracion_svg(claseExtra)
+  Devuelve el SVG del icono de configuracion.
+
+- linea 303: icono_salida_svg(claseExtra)
+  Devuelve el SVG del icono de salida.
+
+4.4 Sesion y seguridad de acceso
+- linea 307: es_pagina_privada()
+  Dice si la vista actual requiere sesion.
+
+- linea 311: obtener_usuario_actual()
+  Devuelve el usuario activo desde estado_aplicacion.
+
+- linea 315: mostrar_toast_lateral(texto, tipo)
+  Muestra un toast discreto lateral con SweetAlert2.
+
+- linea 338: confirmar_accion(...)
+  Abre un modal de confirmacion antes de acciones delicadas.
+
+- linea 358: consumir_api(ruta, opciones)
+  Funcion central para llamar la API backend con fetch, cabeceras,
+  token Bearer y manejo uniforme de errores.
+
+- linea 394: obtener_sesion(forzar)
+  Consulta la sesion actual al backend.
+
+- linea 411: preparar_vista_privada()
+  Verifica acceso a vistas privadas y redirige al login si no hay sesion.
+
+- linea 424: sincronizar_interfaz_sesion()
+  Actualiza botones, menus y elementos segun el estado de sesion.
+
+- linea 429: normalizar_menu_superior()
+  Reacomoda el menu superior para dejarlo consistente entre pantallas.
+
+- linea 512: inicializar_boton_cerrar_sesion()
+  Prepara el boton de cerrar sesion.
+
+- linea 516: cerrar_sesion()
+  Limpia sesion local y redirige al login.
+
+- linea 532: inicializar_menu_responsive()
+  Prepara interacciones del menu para pantallas pequenas.
+
+4.5 Ahorros y picker
+- linea 542: sincronizar_picker_color_ahorro()
+  Mantiene sincronizado el color visual y su valor textual en ahorros.
+
+4.6 Alertas y campana
+- linea 561: inicializar_campana_alertas()
+  Prepara la campana superior de alertas.
+
+- linea 607: sincronizar_alertas_en_estado(respuesta)
+  Guarda alertas y contador en el estado global.
+
+- linea 620: cargar_alertas_desde_servidor()
+  Pide al backend las alertas del usuario.
+
+- linea 637: marcar_alertas_como_vistas()
+  Marca alertas como leidas desde el panel.
+
+- linea 649: eliminar_alerta_desde_panel(alertId, botonActivo)
+  Elimina una alerta desde el panel superior.
+
+4.7 Accesos de cuenta y scroll
+- linea 675: inicializar_accesos_cuenta()
+  Activa los accesos tipo tarjetas del panel wallet.
+
+- linea 732: desplazar_hacia_bloque(elemento)
+  Hace scroll suave hasta una seccion.
+
+- linea 743: aplicar_iconos_atajo_wallet()
+  Inserta o ajusta iconos de los atajos del panel.
+
+4.8 Telefono internacional
+- linea 769: obtener_prefijo_telefono_por_defecto()
+  Devuelve el prefijo inicial que usara el sistema.
+
+- linea 775: poblar_selector_prefijo_telefono(selector, inputId, prefijoInicial)
+  Llena el select de paises y prefijos telefonicos.
+
+- linea 805: descomponer_telefono_internacional(valor)
+  Separa un telefono completo en prefijo y numero local.
+
+- linea 841: rellenar_telefono_en_campos(selectorId, inputId, telefonoCompleto)
+  Coloca un telefono completo dentro de select + input.
+
+- linea 855: construir_telefono_desde_campos(selectorId, inputId, requerido)
+  Toma select + input y forma el telefono internacional final.
+
+4.9 Login, registro y recuperacion
+- linea 883: inicializar_login()
+  Prepara toda la pantalla de acceso, registro y recuperacion.
+
+- linea 1112: aplicar_estado_bootstrap_login(bootstrap)
+  Ajusta la vista del login segun si la base esta vacia o ya tiene usuarios.
+
+- linea 1157: inicializar_flujo_pin_recuperacion()
+  Activa la interaccion del panel de PIN de recuperacion.
+
+- linea 1171: preparar_panel_reset(correo, pin)
+  Llena el panel de cambio de contrasena desde datos previos.
+
+- linea 1184: bloquear_cambio_password_reset(limpiarCampos)
+  Bloquea el panel de cambio de contrasena hasta validar el PIN.
+
+- linea 1210: habilitar_cambio_password_reset()
+  Habilita el formulario de cambio de contrasena.
+
+- linea 1237: validar_pin_recuperacion()
+  Envia el PIN al backend para validarlo.
+
+4.10 Dashboard principal
+- linea 1267: inicializar_principal()
+  Arranca el dashboard wallet.
+
+- linea 1273: cargar_panel_wallet_completo()
+  Hace carga paralela del dashboard y centros auxiliares.
+
+- linea 1294: renderizar_principal(data)
+  Pinta el estado general del dashboard.
+
+- linea 1334: renderizar_alerta_adelanto(adelanto)
+  Muestra el resumen del adelanto activo.
+
+- linea 1348: renderizar_lista_movimientos_recientes(lista)
+  Pinta movimientos recientes del inicio.
+
+- linea 1369: renderizar_resumen_mensual(resumen)
+  Pinta resumen mensual del dashboard.
+
+- linea 1394: renderizar_alertas_seguridad(seguridad, adelantoActivo)
+  Pinta resumen de seguridad y situacion del usuario.
+
+- linea 1433: renderizar_lista_estado_seguridad(id, items)
+  Pinta una lista visual de estado de seguridad.
+
+- linea 1451: renderizar_lista_resumen_compacto(id, items)
+  Pinta una lista corta para tarjetas resumen.
+
+- linea 1466: renderizar_favoritos_principales(favoritos)
+  Pinta favoritos destacados en el inicio.
+
+- linea 1472: renderizar_pagos_programados(pagos)
+  Pinta pagos programados del usuario.
+
+- linea 1479: renderizar_suscripciones(suscripciones)
+  Pinta servicios o cobros asociados.
+
+- linea 1486: renderizar_cuentas(cuentas)
+  Pinta las cuentas wallet.
+
+- linea 1519: renderizar_tarjetas(tarjetas)
+  Pinta las tarjetas vinculadas.
+
+4.11 Formularios del dashboard principal
+- linea 1545: inicializar_formularios_principal()
+  Conecta submit de favoritos, tarjetas, cuentas, ahorros, servicios y adelanto.
+
+- linea 1862: renderizar_centro_tarjetas(data)
+  Pinta el centro de tarjetas.
+
+- linea 1887: renderizar_centro_ahorros(data)
+  Pinta el centro de bolsillos de ahorro.
+
+- linea 1942: renderizar_centro_servicios(data)
+  Pinta el centro de servicios vinculados y pago.
+
+- linea 2035: sincronizar_pago_servicio_desde_vinculo()
+  Sincroniza el pago tomando datos del servicio ya vinculado.
+
+- linea 2068: renderizar_centro_adelanto(data)
+  Pinta politica, estado e historial de adelantos salariales.
+
+- linea 2118: refrescar_panel_alertas_desde_servidor()
+  Refresca las alertas superiores.
+
+4.12 Modales del wallet
+- linea 2122: inicializar_modales_wallet()
+  Conecta apertura, cierre y comportamiento base de modales.
+
+- linea 2176: abrir_modal_wallet(id)
+  Abre un modal concreto.
+
+- linea 2194: cerrar_modal_wallet(id)
+  Cierra un modal concreto.
+
+- linea 2208: preparar_modal_wallet(id)
+  Ajusta un modal antes de mostrarlo.
+
+4.13 Seguridad modal desde perfil o wallet
+- linea 2214: inicializar_recuperacion_seguridad_modal(...)
+  Prepara el flujo de recuperacion dentro del modal de seguridad.
+
+- linea 2326: preparar_modal_recuperacion_seguridad()
+  Prepara el modal antes de pedir el PIN.
+
+- linea 2334: preparar_modal_reset_con_datos(correo, pin)
+  Pasa correo y PIN al modal de cambio de contrasena.
+
+- linea 2341: bloquear_cambio_password_reset_modal(limpiarCampos)
+  Bloquea el modal de cambio hasta validar el PIN.
+
+- linea 2367: habilitar_cambio_password_reset_modal()
+  Habilita el cambio de contrasena en el modal.
+
+- linea 2392: validar_pin_recuperacion_modal()
+  Valida el PIN desde el modal contra backend.
+
+4.14 Perfil
+- linea 2422: inicializar_perfil()
+  Carga perfil, centros auxiliares y conecta la actualizacion.
+
+- linea 2590: renderizar_perfil(profile, recentAccessLogs)
+  Pinta los datos del perfil y secciones desplegables.
+
+- linea 2626: renderizar_avatar_perfil(profile, fotoTemporal)
+  Pinta la foto o iniciales del perfil.
+
+- linea 2648: renderizar_accesos_perfil(accesos)
+  Pinta accesos recientes.
+
+- linea 2694: actualizar_meta_desplegable(id, texto)
+  Cambia el texto resumen de una tarjeta desplegable.
+
+- linea 2703: actualizar_texto_archivo_perfil(configuracion)
+  Actualiza el texto del selector de foto.
+
+- linea 2742: resumir_texto_entorno(texto)
+  Resume texto de contexto para bloques visuales.
+
+- linea 2779: renderizar_logros_perfil(resumen)
+  Pinta logros del usuario.
+
+- linea 2839: renderizar_trofeos_perfil(resumen)
+  Pinta trofeos bloqueados y desbloqueados.
+
+- linea 2900: obtener_iniciales_usuario(profile)
+  Calcula iniciales del usuario.
+
+- linea 2918: leer_archivo_como_data_url(archivo, opciones)
+  Lee la foto local y la convierte a Data URL antes de enviarla.
+
+4.15 Transferencias
+- linea 2950: inicializar_transferencias()
+  Arranca la pantalla de transferencias.
+
+- linea 3026: cargar_metadata_transferencias(forzarSesion)
+  Carga cuentas, favoritos, resumen y catalogos de bancos.
+
+- linea 3043: poblar_select_cuentas(cuentas)
+  Llena el select de cuentas origen.
+
+- linea 3056: poblar_select_favoritos(favoritos)
+  Llena el select de favoritos.
+
+- linea 3074: poblar_select_bancos(bancos)
+  Llena el select de bancos destino.
+
+- linea 3098: poblar_select_generico(id, elementos, formateador, placeholder)
+  Reutilizable para llenar selects.
+
+- linea 3127: renderizar_resumen_operaciones(resumen)
+  Pinta resumen rapido del modulo de transferencias.
+
+- linea 3139: renderizar_beneficiarios_operaciones(favoritos)
+  Pinta lista visual de beneficiarios.
+
+- linea 3146: alternar_fecha_programada()
+  Activa o desactiva el campo de fecha programada.
+
+- linea 3158: aplicar_favorito_seleccionado()
+  Copia los datos del favorito al formulario.
+
+- linea 3175: renderizar_favoritos_con_acciones(idLista, favoritos, opciones)
+  Pinta favoritos con botones de eliminar u otras acciones.
+
+- linea 3215: eliminar_favorito(beneficiaryId, mensajeEstadoId, botonActivo)
+  Elimina un favorito via API.
+
+4.16 Movimientos
+- linea 3256: inicializar_movimientos()
+  Arranca la pagina de movimientos.
+
+- linea 3276: cargar_movimientos_filtrados()
+  Lee filtros y consulta movimientos al backend.
+
+- linea 3291: renderizar_tabla_movimientos(lista)
+  Pinta la tabla principal de historial.
+
+- linea 3320: renderizar_actividad_movimientos(lista)
+  Pinta tarjetas de actividad.
+
+- linea 3336: renderizar_resumen_movimientos(lista)
+  Pinta resumen operativo filtrado.
+
+- linea 3363: renderizar_graficos_movimientos(lista)
+  Dibuja graficos de ingresos, egresos y ahorro.
+
+4.17 Portal forex
+- linea 3457: inicializar_portal_forex()
+  Arranca cualquiera de las tres vistas forex.
+
+- linea 3492: cargar_aprendizaje_forex(par)
+  Pide el contenido educativo y de mercado del par seleccionado.
+
+- linea 3513: renderizar_modulos_forex()
+  Pinta la lista de modulos forex.
+
+- linea 3545: renderizar_tablero_progreso_forex()
+  Pinta el tablero de progreso del alumno.
+
+- linea 3585: modulo_desbloqueado(indice)
+  Determina si un modulo puede abrirse.
+
+- linea 3600: renderizar_mercado_forex()
+  Pinta el panel del mercado actual.
+
+- linea 3652: renderizar_modulo_forex_activo()
+  Pinta el modulo de estudio activo.
+
+- linea 3691: renderizar_quiz_forex(modulo)
+  Pinta preguntas del quiz activo.
+
+- linea 3717: validar_quiz_forex_activo()
+  Corrige respuestas y calcula nota.
+
+- linea 3766: obtener_progreso_forex_local()
+  Lee progreso local de estudio.
+
+- linea 3777: guardar_progreso_forex_local(progreso)
+  Guarda progreso local.
+
+- linea 3783: obtener_historial_forex_local()
+  Lee historial local de hitos forex.
+
+- linea 3794: guardar_historial_forex_local(historial)
+  Guarda historial local de hitos.
+
+- linea 3800: registrar_hito_forex(modulo)
+  Agrega un hito de aprendizaje.
+
+4.18 Panel superior de alertas
+- linea 3813: renderizar_panel_alertas_superior(alertas, totalNoLeidas)
+  Pinta el panel de alertas desplegable superior.
+
+- linea 3849: normalizar_nivel_alerta_visual(nivel)
+  Convierte el nivel de alerta a clase visual usable.
+
+4.19 Simulador forex
+- linea 3860: inicializar_simulador()
+  Arranca el simulador.
+
+- linea 3921: renderizar_estado_inicial_simulador()
+  Pinta el estado vacio inicial del simulador.
+
+- linea 3946: cargar_mercado_referencia_simulador(par)
+  Consume el mercado de referencia para la simulacion.
+
+- linea 3988: renderizar_simulacion_forex(resultado)
+  Pinta resultado, curva y resumen de la simulacion.
+
+- linea 4068: obtener_historial_simulacion_local()
+  Lee historial local de simulaciones.
+
+- linea 4079: guardar_historial_simulacion_local(historial)
+  Guarda historial local de simulaciones.
+
+- linea 4085: registrar_simulacion_local(resultado)
+  Registra una simulacion completada.
+
+- linea 4098: renderizar_historial_simulacion()
+  Pinta historial visual del simulador.
+
+- linea 4118: alternar_estado_vacio_simulador(mostrar)
+  Muestra u oculta el estado vacio del simulador.
+
+- linea 4127: renderizar_grafico_mercado_simulador(series, pair)
+  Dibuja el grafico del mercado de referencia.
+
+4.20 Graficos reutilizables
+- linea 4155: redibujar_graficos()
+  Fuerza repintado de graficos despues de cambios de tema o datos.
+
+- linea 4173: obtener_color_css(nombreVariable, respaldo)
+  Lee variables CSS para usarlas en graficos.
+
+- linea 4178: crear_o_actualizar_grafico(id, tipo, data, options)
+  Crea o actualiza un grafico Chart.js.
+
+- linea 4199: construir_escalas_grafico()
+  Devuelve escalas comunes para Chart.js.
+
+4.21 Modo de acceso y parametros de URL
+- linea 4220: activar_panel_acceso(modo)
+  Cambia entre panel login, registro o recuperacion.
+
+- linea 4236: obtener_parametro_url(nombre)
+  Lee parametros de la URL.
+
+- linea 4240: sincronizar_reset_desde_url()
+  Si la URL trae modo reset, abre el panel correcto.
+
+- linea 4259: mostrar_estado_sesion_desde_url()
+  Lee mensajes como sesion cerrada desde la URL.
+
+- linea 4274: limpiar_query_login()
+  Limpia query string completa del login.
+
+- linea 4280: limpiar_parametro_url(nombre)
+  Limpia un parametro concreto de la URL.
+
+4.22 Validaciones frontend
+- linea 4286: passwords_coinciden(password, confirmation)
+  Valida que dos passwords coincidan.
+
+- linea 4292: normalizar_correo_local(valor)
+  Normaliza correo en frontend.
+
+- linea 4298: normalizar_dui_visual(valor)
+  Aplica formato visual al DUI.
+
+- linea 4309: normalizar_telefono_visual(valor)
+  Limpia telefono internacional general.
+
+- linea 4317: normalizar_telefono_local_visual(valor)
+  Limpia telefono local numerico.
+
+- linea 4325: validar_correo_frontend(valor)
+  Valida estructura del correo.
+
+- linea 4369: validar_nombre_humano_frontend(valor, etiqueta)
+  Valida nombres humanos sin mezclas raras.
+
+- linea 4385: validar_telefono_frontend(valor, etiqueta)
+  Valida telefono numerico.
+
+- linea 4406: validar_dui_frontend(valor)
+  Valida DUI.
+
+- linea 4423: validar_fecha_nacimiento_frontend(valor, requerida)
+  Valida fecha de nacimiento y mayoria de edad.
+
+- linea 4460: validar_direccion_frontend(valor, requerida)
+  Valida direccion.
+
+- linea 4484: validar_password_segura_frontend(valor)
+  Valida fortaleza minima de password.
+
+- linea 4499: aplicar_formato_documento_input(input)
+  Aplica formato visual al campo de DUI.
+
+- linea 4512: aplicar_formato_telefono_input(input)
+  Aplica formato visual al telefono.
+
+4.23 Utilidades de sesion, DOM y formato
+- linea 4523: guardar_sesion_desde_respuesta(respuesta)
+  Guarda sesion retornada por backend.
+
+- linea 4537: obtener_valor(id)
+  Lee valor de input por id.
+
+- linea 4542: establecer_valor(id, valor)
+  Escribe valor en input por id.
+
+- linea 4549: establecer_texto(id, texto)
+  Escribe texto en elemento por id.
+
+- linea 4556: agregar_li(lista, texto)
+  Agrega un item simple a una lista.
+
+- linea 4562: renderizar_lista_textos(id_lista, elementos)
+  Pinta lista de textos.
+
+- linea 4569: mostrar_mensaje(id, texto, tipo)
+  Muestra mensaje contextual en una zona concreta.
+
+- linea 4582: mostrar_mensaje_grupo(ids, texto, tipo, silencioso)
+  Muestra el mismo mensaje en varios lugares.
+
+- linea 4608: formatear_moneda(valor)
+  Convierte numero a moneda USD.
+
+- linea 4616: formatear_monto_con_signo(valor)
+  Agrega signo positivo o negativo al monto.
+
+- linea 4622: formatear_fecha(valor)
+  Convierte fecha ISO a fecha visual.
+
+- linea 4635: formatear_fecha_input(valor)
+  Convierte fecha a formato de input HTML.
+
+- linea 4653: normalizar_tipo_movimiento(tipo)
+  Limpia etiqueta del tipo de movimiento.
+
+- linea 4658: normalizar_estado_movimiento(estado)
+  Limpia etiqueta del estado.
+
+- linea 4663: capitalizar(texto)
+  Capitaliza texto simple.
+
+- linea 4668: escapar_html(texto)
+  Escapa contenido para evitar HTML inseguro al renderizar.
+
+
+======================================================================
+5. COMO ENTRAN Y SALEN LOS DATOS DEL FRONTEND
+======================================================================
+Punto unico de salida hacia backend:
+
+- recursos/scripts/funcionalidad_global.js
+- linea 358: consumir_api(ruta, opciones)
+
+Esta funcion:
+
+- arma fetch()
+- agrega Authorization: Bearer <token> si existe
+- manda body en JSON
+- recibe JSON
+- si hay error HTTP, lo transforma en Error legible
+
+Esto significa que toda la captura de datos desde formularios HTML termina
+pasando por consumir_api().
+
+
+======================================================================
+6. ENTRYPOINT DEL BACKEND
+Archivo: server.js
+======================================================================
+
+6.1 Funciones base del servidor
+- linea 35 aprox: buildSecurityHeaders()
+  Define cabeceras de seguridad HTTP.
+
+- linea 49 aprox: sendJson()
+  Devuelve JSON uniforme.
+
+- linea 61 aprox: sendRedirect()
+  Redirige navegador.
+
+- linea 70 aprox: sendText()
+  Devuelve texto plano.
+
+- linea 80 aprox: enforceJsonContentType()
+  Obliga a que POST/PUT/PATCH usen JSON.
+
+- linea 93 aprox: enforceRateLimit()
+  Rate limit basico en memoria por IP y ruta.
+
+- linea 114 aprox: parseJsonBody()
+  Aqui se extraen realmente los datos mandados desde el frontend.
+  Este es el primer punto donde el servidor recibe el body.
+
+- linea 145 aprox: getClientIpAddress()
+  Obtiene IP real o proxy.
+
+6.2 Rutas API declaradas en server.js
+- linea 181: GET /api/health
+- linea 190: POST /api/auth/login
+- linea 208: GET /api/auth/bootstrap
+- linea 214: POST /api/auth/register
+- linea 238: POST /api/auth/password-reset/request
+- linea 254: POST /api/auth/password-reset/verify
+- linea 270: POST /api/auth/password-reset/confirm
+- linea 289: GET /api/auth/session
+- linea 296: GET /api/catalogs
+- linea 303: GET /api/dashboard
+- linea 310: GET /api/profile
+- linea 317: POST /api/profile
+- linea 326: GET /api/movements
+- linea 341: GET /api/transfers/metadata
+- linea 349: GET /api/cards
+- linea 356: POST /api/cards
+- linea 365: GET /api/accounts
+- linea 372: POST /api/accounts
+- linea 381: GET /api/alerts
+- linea 388: POST /api/alerts/mark-read
+- linea 395: POST /api/alerts/delete
+- linea 404: GET /api/services/center
+- linea 411: POST /api/services/link
+- linea 419: POST /api/services/pay
+- linea 428: GET /api/savings
+- linea 435: POST /api/savings
+- linea 443: POST /api/savings/deposit
+- linea 452: GET /api/salary-advance
+- linea 459: POST /api/salary-advance/request-code
+- linea 472: POST /api/salary-advance
+- linea 486: GET /api/forex/learning
+- linea 494: POST /api/forex/simulate
+- linea 502: POST /api/beneficiaries
+- linea 513: POST /api/beneficiaries/remove-favorite
+- linea 524: POST /api/transfers
+
+Resumen importante:
+- parseJsonBody() extrae el body
+- handleApiRequest() selecciona la ruta
+- luego llama a un controller
+- el controller llama a un model
+- el model usa db.js para query() o withTransaction()
+- ahi es donde se leen o escriben tablas PostgreSQL
+
+
+======================================================================
+7. CONTROLADORES BACKEND Y SU RESPONSABILIDAD
+======================================================================
+
+7.1 backend/controllers/auth.controller.js
+- login(payload)
+  Delegacion del login al modelo auth.
+- getBootstrap()
+  Consulta si ya existe usuario inicial.
+- register(payload)
+  Registra usuario y cuenta principal.
+- requestPasswordReset(payload)
+  Pide envio de PIN por correo.
+- verifyPasswordResetPin(payload)
+  Verifica PIN.
+- resetPassword(payload)
+  Cambia contrasena usando PIN.
+- authenticate(headers)
+  Valida token Bearer y recupera sesion viva.
+
+7.2 backend/controllers/profile.controller.js
+- getProfile(userId)
+  Pide perfil consolidado.
+- updateProfile(userId, payload)
+  Actualiza datos del perfil.
+
+7.3 backend/controllers/transfer.controller.js
+- getTransferMetadata(userId)
+  Carga cuentas, favoritos y resumen de transferencias.
+- createBeneficiary(userId, payload)
+  Guarda beneficiario o favorito.
+- removeFavoriteBeneficiary(userId, beneficiaryId)
+  Quita favorito.
+- createTransfer(userId, payload)
+  Ejecuta transferencia.
+
+7.4 backend/controllers/dashboard.controller.js
+- getDashboard(userId)
+  Devuelve dashboard general.
+- getMovements(userId, filters)
+  Devuelve movimientos filtrados.
+
+7.5 backend/controllers/cards.controller.js
+- getCenter(userId)
+  Devuelve centro de tarjetas.
+- linkCard(userId, payload)
+  Vincula tarjeta.
+
+7.6 backend/controllers/accounts.controller.js
+- getCenter(userId)
+  Devuelve centro de cuentas.
+- createSecondary(userId, payload)
+  Crea cuenta secundaria.
+
+7.7 backend/controllers/alerts.controller.js
+- getCenter(userId)
+  Devuelve alertas.
+- markAllAsRead(userId)
+  Marca leidas.
+- removeAlert(userId, alertId)
+  Elimina alerta.
+
+7.8 backend/controllers/services.controller.js
+- getCenter(userId)
+  Devuelve centro de servicios.
+- linkService(userId, payload)
+  Vincula servicio.
+- payService(userId, payload)
+  Ejecuta pago de servicio.
+
+7.9 backend/controllers/savings.controller.js
+- getCenter(userId)
+  Devuelve bolsillos de ahorro.
+- createPocket(userId, payload)
+  Crea ahorro.
+- deposit(userId, payload)
+  Mueve dinero a ahorro.
+
+7.10 backend/controllers/salary-advance.controller.js
+- getCenter(userId)
+  Devuelve centro de adelanto salarial.
+- requestAdvanceCode(userId, payload)
+  Envia codigo por correo.
+- requestAdvance(userId, payload)
+  Acredita adelanto.
+
+7.11 backend/controllers/forex.controller.js
+- getLearningContent(query)
+  Devuelve contenido forex y mercado.
+- simulate(payload)
+  Ejecuta simulacion forex.
+
+
+======================================================================
+8. CAPA DE BASE DE DATOS
+Archivo: backend/db.js
+======================================================================
+
+- query(text, params)
+  Consulta simple sobre el pool de pg.
+
+- withTransaction(callback)
+  Hace BEGIN, COMMIT y ROLLBACK. Este es el punto usado cuando una
+  operacion toca varias tablas y debe quedar consistente.
+
+- healthCheck()
+  Valida conexion minima con SELECT 1.
+
+Conexion:
+- sale de backend/env.js
+- lee DATABASE_URL o PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD
+- crea el Pool de PostgreSQL con pg
+
+
+======================================================================
+9. DONDE SE EXTRAEN LOS DATOS Y DONDE SE ESCRIBEN EN BASE
+======================================================================
+
+Antes de los casos concretos, este es el recorrido exacto:
+
+1. El usuario llena un formulario en una vista HTML.
+2. El submit lo maneja recursos/scripts/funcionalidad_global.js.
+3. Ese JS llama a consumir_api() en la linea 358.
+4. consumir_api() manda fetch() a una ruta /api/...
+5. server.js recibe la ruta y el body.
+6. server.js usa parseJsonBody() para extraer el JSON.
+7. server.js llama al controller correcto.
+8. El controller delega al model correcto.
+9. El model ejecuta SQL real con query() o withTransaction().
+10. db.js usa el pool de PostgreSQL y ahi ocurre la carga o insercion real.
+
+Resumen corto:
+
+HTML -> funcionalidad_global.js -> server.js -> controller -> model -> db.js -> PostgreSQL
+
+Puntos tecnicos clave:
+
+- Extraccion del body JSON:
+  - server.js:114 -> parseJsonBody()
+
+- Conexion compartida a PostgreSQL:
+  - backend/db.js:4 -> const pool = new Pool(config.database)
+
+- Consulta simple:
+  - backend/db.js:8 -> query(text, params)
+
+- Escritura transaccional:
+  - backend/db.js:15 -> withTransaction(callback)
+
+9.1 Registro de usuario
+Vista:
+- views/login.html
+
+Frontend:
+- inicializar_login() linea 883
+- submit de registro llama:
+  /api/auth/register en linea 993
+
+Backend:
+- server.js linea 214
+- auth.controller.js -> register()
+- auth.model.js -> registerUser() linea 214
+
+Tablas que toca:
+- usuarios
+- usuarios_credenciales
+- cuentas
+- transacciones
+- movimientos_cuenta
+- accesos_usuario
+- alertas_usuario
+
+Que hace:
+- inserta usuario
+- inserta credencial
+- crea cuenta principal
+- acredita bono de bienvenida
+- registra movimiento y alerta
+
+9.2 Login
+Vista:
+- views/login.html
+
+Frontend:
+- inicializar_login() linea 883
+- POST /api/auth/login linea 950
+
+Backend:
+- server.js linea 190
+- auth.controller.js -> login()
+- auth.model.js -> loginUser() linea 100
+
+Tablas que toca:
+- usuarios
+- usuarios_credenciales
+- accesos_usuario
+
+Que hace:
+- valida correo y password
+- incrementa intentos fallidos
+- bloquea temporalmente si se excede
+- actualiza ultimo login
+- genera token de sesion
+
+9.3 Recuperacion de contrasena por PIN
+Vista:
+- views/login.html
+- views/perfil.html
+
+Frontend:
+- POST /api/auth/password-reset/request linea 1038 o 2226
+- POST /api/auth/password-reset/verify linea 1248 o 2403
+- POST /api/auth/password-reset/confirm linea 1086 o 2280
+
+Backend:
+- auth.model.js -> requestPasswordReset() linea 408
+- auth.model.js -> verifyPasswordResetPin() linea 487
+- auth.model.js -> resetPasswordWithToken() linea 500
+
+Tablas que toca:
+- usuarios
+- tokens_recuperacion_password
+- usuarios_credenciales
+- accesos_usuario
+
+Que hace:
+- invalida PINes anteriores
+- guarda PIN nuevo hasheado
+- envia correo
+- verifica PIN
+- cambia contrasena
+
+9.4 Dashboard principal
+Vista:
+- views/principal.html
+
+Frontend:
+- cargar_panel_wallet_completo() linea 1273
+- consume:
+  - /api/dashboard
+  - /api/cards
+  - /api/savings
+  - /api/services/center
+  - /api/salary-advance
+
+Backend:
+- dashboard.model.js
+- cards.model.js
+- savings.model.js
+- services.model.js
+- salary-advance.model.js
+
+Tablas que lee:
+- cuentas
+- tarjetas
+- bolsillos_ahorro
+- servicios_usuario
+- adelantos_salariales
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+9.5 Perfil
+Vista:
+- views/perfil.html
+
+Frontend:
+- /api/profile GET linea 2440
+- /api/profile POST linea 2550
+
+Backend:
+- profile.model.js -> getProfile() linea 127
+- profile.model.js -> updateProfile() linea 146
+
+Tablas que toca:
+- usuarios
+- accesos_usuario
+
+Adicional:
+- la foto se guarda en disco desde profile.model.js, no en la base.
+- en la base solo queda el nombre del archivo.
+
+9.6 Favoritos y beneficiarios
+Vistas:
+- principal.html
+- operaciones.html
+
+Frontend:
+- /api/beneficiaries linea 1571
+- /api/beneficiaries/remove-favorite linea 3225
+
+Backend:
+- transfer.model.js -> createBeneficiary() linea 50
+- transfer.model.js -> removeFavoriteBeneficiary() linea 73
+- base.model.js -> insertOrUpdateBeneficiary() linea 1144
+
+Tabla principal:
+- beneficiarios
+
+Tambien genera:
+- alertas_usuario
+
+9.7 Transferencias
+Vista:
+- views/operaciones.html
+
+Frontend:
+- /api/transfers/metadata linea 3032
+- /api/transfers linea 3010
+
+Backend:
+- transfer.model.js -> getTransferMetadata() linea 25
+- transfer.model.js -> createTransfer() linea 142
+
+Tablas que toca:
+- cuentas
+- beneficiarios
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+9.8 Tarjetas vinculadas
+Vista:
+- views/principal.html
+
+Frontend:
+- /api/cards GET linea 1276 o 2441
+- /api/cards POST linea 1601
+
+Backend:
+- cards.model.js -> getCardsCenter() linea 14
+- cards.model.js -> linkCard() linea 31
+
+Tablas que toca:
+- tarjetas
+- cuentas
+- catalogo_bancos
+
+9.9 Cuentas secundarias
+Vista:
+- views/principal.html
+
+Frontend:
+- /api/accounts GET linea 365
+- /api/accounts POST linea 1636
+
+Backend:
+- accounts.model.js -> getAccountsCenter() linea 12
+- accounts.model.js -> createSecondaryAccount() linea 22
+
+Tablas que toca:
+- cuentas
+- usuarios
+
+9.10 Ahorros
+Vista:
+- views/principal.html
+
+Frontend:
+- /api/savings GET linea 1277 o 2443
+- /api/savings POST linea 1662
+- /api/savings/deposit POST linea 1692
+
+Backend:
+- savings.model.js -> getSavingsCenter() linea 28
+- savings.model.js -> createSavingsPocket() linea 62
+- savings.model.js -> depositIntoSavings() linea 135
+
+Tablas que toca:
+- bolsillos_ahorro
+- cuentas
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+9.11 Servicios
+Vista:
+- views/principal.html
+
+Frontend:
+- /api/services/center GET linea 1278 o 2442
+- /api/services/link POST linea 1719
+- /api/services/pay POST linea 1772
+
+Backend:
+- services.model.js -> getServicesCenter() linea 62
+- services.model.js -> linkService() linea 89
+- services.model.js -> payService() linea 313
+
+Tablas que toca:
+- servicios_usuario
+- proveedores_servicio
+- cuentas
+- transacciones
+- movimientos_cuenta
+- adelantos_salariales si el pago va al adelanto
+
+9.12 Adelanto salarial
+Vista:
+- views/principal.html
+
+Frontend:
+- /api/salary-advance GET linea 1279 o 2444
+- /api/salary-advance/request-code POST linea 1810
+- /api/salary-advance POST linea 1841
+
+Backend:
+- salary-advance.model.js -> getSalaryAdvanceCenter() linea 162
+- salary-advance.model.js -> requestSalaryAdvanceCode() linea 220
+- salary-advance.model.js -> requestSalaryAdvance() linea 278
+
+Tablas que toca:
+- adelantos_salariales
+- codigos_verificacion
+- cuentas
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+9.13 Alertas
+Vista:
+- campana superior en casi todas las vistas privadas
+
+Frontend:
+- /api/alerts GET linea 632
+- /api/alerts/mark-read POST linea 642
+- /api/alerts/delete POST linea 659
+
+Backend:
+- alerts.model.js -> getAlertsCenter() linea 6
+- alerts.model.js -> markAllAlertsAsRead() linea 20
+- alerts.model.js -> deleteAlert() linea 40
+
+Tabla:
+- alertas_usuario
+
+9.14 Movimientos
+Vista:
+- views/movimientos.html
+
+Frontend:
+- /api/movements linea 3283
+
+Backend:
+- dashboard.controller.js -> getMovements()
+- base.model.js -> getMovements() linea 1058
+- base.model.js -> getMovementRows() linea 956
+
+Tablas que lee:
+- transacciones
+- movimientos_cuenta
+- beneficiarios
+- proveedores_servicio
+
+9.15 Catalogos
+Frontend:
+- /api/catalogs linea 3033
+
+Backend:
+- catalog.model.js -> getCatalogs() linea 8
+
+Tablas que lee:
+- catalogo_bancos
+- proveedores_servicio
+
+9.16 Forex y simulador
+Vistas:
+- mercado_forex.html
+- aprendizaje_forex.html
+- cuestionario_forex.html
+- simulador_inversion.html
+
+Frontend:
+- /api/forex/learning linea 3494 y 3947
+- /api/forex/simulate linea 3895
+
+Backend:
+- forex.model.js -> getForexLearningContent() linea 573
+- forex.model.js -> simulateForexScenario() linea 613
+
+Importante:
+- esta parte no escribe a PostgreSQL
+- consume mercado de referencia y construye respuesta para frontend
+- progreso y simulaciones se guardan localmente en el navegador
+
+
+======================================================================
+10. MODELOS BACKEND Y TABLAS QUE MANEJAN
+======================================================================
+
+10.1 backend/models/base.model.js
+Es la caja de herramientas comun.
+Lee o escribe:
+- usuarios
+- usuarios_credenciales
+- alertas_usuario
+- accesos_usuario
+- cuentas
+- beneficiarios
+- tarjetas
+- pagos_programados
+- catalogo_bancos
+- proveedores_servicio
+- adelantos_salariales
+- transacciones
+- movimientos_cuenta
+
+Se usa para:
+- validaciones
+- mapeos
+- alertas
+- logs
+- sesiones
+- lecturas generales
+
+10.2 backend/models/auth.model.js
+Maneja:
+- login
+- registro
+- password reset
+
+Escribe en:
+- usuarios
+- usuarios_credenciales
+- cuentas
+- transacciones
+- movimientos_cuenta
+- tokens_recuperacion_password
+- accesos_usuario
+- alertas_usuario
+
+10.3 backend/models/profile.model.js
+Maneja:
+- lectura y actualizacion de perfil
+- foto de perfil en disco
+
+Escribe o lee:
+- usuarios
+- accesos_usuario
+
+10.4 backend/models/transfer.model.js
+Maneja:
+- metadata de transferencias
+- favoritos
+- transferencias
+
+Escribe o lee:
+- cuentas
+- beneficiarios
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+10.5 backend/models/cards.model.js
+Maneja:
+- tarjetas vinculadas
+
+Escribe o lee:
+- tarjetas
+- cuentas
+- catalogo_bancos
+
+10.6 backend/models/accounts.model.js
+Maneja:
+- cuentas secundarias
+
+Escribe o lee:
+- cuentas
+- usuarios
+
+10.7 backend/models/savings.model.js
+Maneja:
+- bolsillos de ahorro
+- depositos a ahorro
+
+Escribe o lee:
+- bolsillos_ahorro
+- cuentas
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+10.8 backend/models/services.model.js
+Maneja:
+- vinculacion de servicios
+- pago de servicios
+- pago de adelanto desde servicios
+
+Escribe o lee:
+- servicios_usuario
+- proveedores_servicio
+- cuentas
+- adelantos_salariales
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+10.9 backend/models/salary-advance.model.js
+Maneja:
+- codigos por correo
+- politicas de adelanto
+- acreditacion
+
+Escribe o lee:
+- codigos_verificacion
+- adelantos_salariales
+- cuentas
+- transacciones
+- movimientos_cuenta
+- alertas_usuario
+
+10.10 backend/models/alerts.model.js
+Maneja:
+- lectura
+- marcado como visto
+- eliminacion
+
+Tabla:
+- alertas_usuario
+
+10.11 backend/models/catalog.model.js
+Maneja:
+- catalogos generales
+
+Tablas:
+- catalogo_bancos
+- proveedores_servicio
+
+10.12 backend/models/dashboard.model.js
+Maneja:
+- consolidado del dashboard
+
+Lee principalmente:
+- cuentas
+- transacciones
+- movimientos_cuenta
+- alertas
+- adelantos
+
+10.13 backend/models/forex.model.js
+Maneja:
+- mercado forex
+- documentacion
+- simulador
+
+No escribe en PostgreSQL.
+
+
+======================================================================
+11. CORREO Y ENVIO DE CODIGOS
+======================================================================
+
+Archivo:
+- backend/mailer.js
+
+Funciones importantes:
+- buildEmailShell()
+  Construye la plantilla visual del correo.
+
+- buildPasswordResetMessage()
+  Construye correo de PIN de recuperacion.
+
+- buildSalaryAdvanceCodeMessage()
+  Construye correo de codigo para adelanto.
+
+- getTransporter()
+  Crea el transporter SMTP con Nodemailer.
+
+- sendPasswordResetEmail()
+  Envia el correo real de recuperacion.
+
+- sendSalaryAdvanceCodeEmail()
+  Envia el correo real del adelanto.
+
+Configuracion leida desde:
+- backend/env.js
+- .env
+
+Variables importantes:
+- SMTP_HOST
+- SMTP_PORT
+- SMTP_SECURE
+- SMTP_AUTH_USER
+- SMTP_AUTH_SECRET
+- SMTP_FROM
+- APP_BASE_URL
+- PASSWORD_RESET_TOKEN_MINUTES
+- ADVANCE_VERIFICATION_CODE_MINUTES
+
+
+======================================================================
+12. COMO LEVANTAR EL PROYECTO EN MODO DEV
+======================================================================
+
+12.1 Backend local
+Comando:
+node server.js
+
+Ruta local:
+http://127.0.0.1:3000/views/login.html
+
+Health:
+http://127.0.0.1:3000/api/health
+
+12.2 Base de datos
+El backend toma la conexion desde:
+- .env
+- backend/env.js
+
+Hoy puede leer:
+- DATABASE_URL
+o
+- PGHOST
+- PGPORT
+- PGDATABASE
+- PGUSER
+- PGPASSWORD
+
+12.3 Script SQL
+La estructura de base esta en:
+- wallet_postgresql.sql
+
+Se ejecuta sobre PostgreSQL para crear tablas, relaciones, vistas, indices
+y demas componentes de la wallet.
+
+
+======================================================================
+13. COMO LEVANTAR UN TUNEL PUBLICO
+======================================================================
+
+Esto sirve cuando un correo necesita abrir un enlace real y no localhost.
+
+13.1 Levantar backend primero
+Comando:
+node server.js
+
+13.2 Crear tunel rapido con cloudflared
+Comando:
+cloudflared tunnel --url http://127.0.0.1:3000
+
+13.3 Tomar la URL publica generada
+Ejemplo:
+https://tu-subdominio.trycloudflare.com
+
+13.4 Colocarla en .env
+Variable:
+APP_BASE_URL=https://tu-subdominio.trycloudflare.com
+
+13.5 Reiniciar backend
+Hay que reiniciar node server.js para que backend/env.js vuelva a leer la
+nueva APP_BASE_URL.
+
+13.6 Resultado
+Desde ese momento los correos que se generen usaran la URL publica y ya no
+apuntaran a localhost.
+
+Nota importante:
+- los quick tunnels de Cloudflare cambian si los reinicias
+- si cambia la URL, vuelve a actualizar APP_BASE_URL y reinicia el backend
+
+
+======================================================================
+14. RESUMEN RAPIDO DEL RECORRIDO COMPLETO
+======================================================================
+
+HTML -> funcionalidad_global.js -> consumir_api() -> server.js ->
+controller -> model -> db.js -> PostgreSQL -> response JSON ->
+funcionalidad_global.js -> renderizado en la vista.
+
+Si quieres ubicar exactamente donde nace un flujo:
+
+- formulario en HTML
+- submit dentro de funcionalidad_global.js
+- endpoint en server.js
+- controller relacionado
+- model relacionado
+- query SQL dentro del model
+
+
+======================================================================
+15. ARCHIVOS CLAVE QUE CONVIENE TENER ABIERTOS
+======================================================================
+
+- server.js
+- backend/db.js
+- backend/env.js
+- backend/mailer.js
+- backend/models/base.model.js
+- backend/models/auth.model.js
+- backend/models/profile.model.js
+- backend/models/transfer.model.js
+- backend/models/services.model.js
+- backend/models/savings.model.js
+- backend/models/salary-advance.model.js
+- recursos/scripts/funcionalidad_global.js
+- wallet_postgresql.sql
+
+
+Fin del documento.

@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- Configuracion basica del documento -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet Digital | Aprendizaje Forex</title>
@@ -15,7 +14,6 @@
                 <span></span><span></span><span></span>
             </button>
             <nav id="menu_superior" class="menu_superior">
-                <a href="login.html">Login</a>
                 <a href="principal.html">Wallet</a>
                 <a href="operaciones.html">Transferencias</a>
                 <a href="movimientos.html">Movimientos</a>
@@ -25,14 +23,12 @@
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
-                    <span class="contador_alertas">3</span>
+                    <span class="contador_alertas">0</span>
                 </button>
                 <section id="panel_alertas" class="panel_alertas" aria-label="Panel de alertas">
                     <h3>Alertas</h3>
                     <ul class="lista_alertas_superior">
-                        <li>Transferencia completada.</li>
-                        <li>Pago programado para el 12 de marzo.</li>
-                        <li>Nuevo acceso reconocido.</li>
+                        <li>Tus alertas apareceran aqui cuando hagas una operacion.</li>
                     </ul>
                 </section>
             </div>
@@ -42,57 +38,70 @@
     <main class="contenedor contenedor_con_menu">
         <header class="cabecera-principal cabecera_destacada">
             <h1>Aprendizaje Forex</h1>
-            <p>Zona educativa y visual con graficos para entender mercado y tendencias.</p>
+            <p>Estudia la documentacion por niveles. Cuando consigas una nota sobresaliente en el cuestionario de cada bloque, se desbloquea el siguiente contenido.</p>
         </header>
 
-        <section class="rejilla-tarjetas">
-            <article class="tarjeta">
-                <h2>Modulo 1: Fundamentos</h2>
-                <ul class="lista_texto">
-                    <li>Pares mayores, menores y exoticos.</li>
-                    <li>Bid, ask y spread explicado.</li>
-                    <li>Sesiones de Londres, New York y Asia.</li>
-                </ul>
-            </article>
-
-            <article class="tarjeta">
-                <h2>Modulo 2: Riesgo</h2>
-                <ul class="lista_texto">
-                    <li>Maximo 1% a 2% por operacion.</li>
-                    <li>Stop loss obligatorio.</li>
-                    <li>Relacion riesgo/beneficio minima 1:1.5.</li>
-                </ul>
-            </article>
-
-            <article class="tarjeta">
-                <h2>Modulo 3: Ejecucion</h2>
-                <ul class="lista_texto">
-                    <li>Entrada por confirmacion, no por impulso.</li>
-                    <li>Plan previo de salida parcial o total.</li>
-                    <li>Registro en diario de trading.</li>
-                </ul>
-            </article>
-        </section>
-
-        <section class="rejilla-tarjetas">
-            <article class="tarjeta">
-                <h2>Tendencia General (Demo)</h2>
-                <div class="contenedor_grafico">
-                    <canvas id="grafico_forex_tendencia" width="900" height="280"></canvas>
+        <section class="layout_forex_academia">
+            <aside class="tarjeta bloque_banco barra_lateral_forex">
+                <div class="titulo_lateral_forex">
+                    <h2>Ruta guiada</h2>
+                    <p>Elige un par para contextualizar tus ejemplos y sigue el orden del contenido.</p>
                 </div>
-            </article>
 
-            <article class="tarjeta">
-                <h2>Velas de Practica (Demo)</h2>
-                <div class="contenedor_grafico">
-                    <canvas id="grafico_forex_velas" width="900" height="280"></canvas>
+                <label for="selector_par_forex">Par principal</label>
+                <select id="selector_par_forex">
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="EURGBP">EUR/GBP</option>
+                    <option value="USDJPY">USD/JPY</option>
+                </select>
+
+                <div class="panel_progreso_forex">
+                    <div class="encabezado_progreso_forex">
+                        <strong>Progreso documental</strong>
+                        <span id="texto_progreso_forex">0%</span>
+                    </div>
+                    <div class="barra_progreso_forex">
+                        <span id="barra_progreso_forex"></span>
+                    </div>
+                    <p id="texto_logro_forex" class="texto_estado_formulario">Completa el primer cuestionario para desbloquear el siguiente bloque.</p>
                 </div>
-            </article>
+
+                <div id="contenedor_cursos_forex" class="lista_modulos_forex"></div>
+
+                <div class="panel_historial_forex">
+                    <h3>Historial reciente</h3>
+                    <ul id="lista_historial_forex" class="lista_texto"></ul>
+                </div>
+            </aside>
+
+            <div class="contenido_forex_principal">
+                <section class="tarjeta bloque_banco">
+                    <h2 class="titulo_icono">
+                        <span class="icono_circular">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"></path><path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg>
+                        </span>
+                        <span>Documentacion activa</span>
+                    </h2>
+                    <p id="texto_contenido_forex" class="texto-secundario">Selecciona un modulo para comenzar.</p>
+                    <div id="contenedor_bloques_forex" class="lista_bloques_forex"></div>
+                    <div class="tarjeta_resumen_forex">
+                        <h3>Checklist del nivel</h3>
+                        <ul id="lista_checklist_forex" class="lista_texto"></ul>
+                    </div>
+                </section>
+
+                <section class="tarjeta bloque_banco">
+                    <h2>Mapa de dominio</h2>
+                    <ul id="lista_dominios_forex" class="lista_texto"></ul>
+                    <a class="enlace_accion" href="cuestionario_forex.html">Ir al cuestionario del modulo</a>
+                </section>
+            </div>
         </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>
 </body>
 </html>
-
-

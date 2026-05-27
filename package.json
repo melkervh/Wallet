@@ -1,0 +1,15 @@
+{
+  "name": "wallet-digital",
+  "version": "1.0.0",
+  "description": "Wallet digital con frontend estatico y backend Node.js conectado a PostgreSQL.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "hash:password": "node scripts/hash-password.js"
+  },
+  "dependencies": {
+    "nodemailer": "^7.0.3",
+    "pg": "^8.13.3"
+  }
+}

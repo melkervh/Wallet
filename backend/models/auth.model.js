@@ -97,12 +97,25 @@ async function getActiveRecoveryPinRecord(client, email, pin, lockRow = false) {
     };
 }
 
+// Funcion: normalizePublicBaseUrl
+// Aqui normalizo la base publica que usare en correos.
+// Si el request actual llega desde un tunel, priorizo esa URL sobre APP_BASE_URL.
+function normalizePublicBaseUrl(baseUrl) {
+    const candidate = cleanText(baseUrl, 300).replace(/\/+$/, "");
+    if (/^https?:\/\//i.test(candidate)) {
+        return candidate;
+    }
+
+    return String(config.appBaseUrl || "").replace(/\/+$/, "");
+}
+
 // Funcion: buildRegistrationActivationUrl
 // Aqui construyo el enlace del correo que aterriza directo en la pantalla de activacion.
 // El frontend usa estos parametros para abrir el modal y, si vienen completos,
 // hasta puede cerrar la activacion automaticamente.
-function buildRegistrationActivationUrl(email, pin) {
-    return `${config.appBaseUrl}/views/login.html?modo=activar&correo=${encodeURIComponent(email)}&pin=${encodeURIComponent(pin)}`;
+function buildRegistrationActivationUrl(baseUrl, email, pin) {
+    const publicBaseUrl = normalizePublicBaseUrl(baseUrl);
+    return `${publicBaseUrl}/views/login.html?modo=activar&correo=${encodeURIComponent(email)}&pin=${encodeURIComponent(pin)}`;
 }
 
 // Funcion: issueRegistrationVerificationCode
@@ -114,6 +127,7 @@ async function issueRegistrationVerificationCode(client, {
     userId,
     email,
     userName,
+    requestBaseUrl,
     ipAddress
 }) {
     await client.query(
@@ -146,7 +160,7 @@ async function issueRegistrationVerificationCode(client, {
         [userId, email, pinHash, expiresAt]
     );
 
-    const activationUrl = buildRegistrationActivationUrl(email, plainPin);
+    const activationUrl = buildRegistrationActivationUrl(requestBaseUrl, email, plainPin);
     const delivery = await sendRegistrationVerificationEmail({
         to: email,
         userName,
@@ -210,13 +224,16 @@ async function getActiveRegistrationPinRecord(client, email, pin, lockRow = fals
             usado_en
         FROM codigos_verificacion
         WHERE usuario_id = $1
+          AND LOWER(destino) = $2
+          AND usado_en IS NULL
+          AND expira_en > NOW()
           AND canal = 'correo'
-          AND codigo_hash = $2
+          AND codigo_hash = $3
         ORDER BY creado_en DESC
         LIMIT 1
         ${lockRow ? "FOR UPDATE" : ""}
         `,
-        [user.id_usuario, hashOneTimeToken(plainPin)]
+        [user.id_usuario, correo, hashOneTimeToken(plainPin)]
     );
 
     const verification = pinResult.rows[0];
@@ -370,6 +387,7 @@ async function registerUser({
     documentId,
     address,
     password,
+    requestBaseUrl,
     ipAddress,
     userAgent
 }) {
@@ -547,6 +565,7 @@ async function registerUser({
             userId,
             email: correo,
             userName,
+            requestBaseUrl,
             ipAddress
         });
 
@@ -622,7 +641,7 @@ async function verifyRegistrationPin({ email, pin, ipAddress, userAgent }) {
 // Funcion: resendRegistrationPin
 // Aqui genero un PIN nuevo solo si la cuenta sigue pendiente.
 // Reutilizo la misma salida de preview para ambientes donde el correo real no este disponible.
-async function resendRegistrationPin({ email, ipAddress }) {
+async function resendRegistrationPin({ email, requestBaseUrl, ipAddress }) {
     const correo = ensureEmailAddress(email);
 
     return withTransaction(async (client) => {
@@ -652,6 +671,7 @@ async function resendRegistrationPin({ email, ipAddress }) {
             userId: user.id_usuario,
             email: user.correo,
             userName: `${user.nombres || ""} ${user.apellidos || ""}`.trim(),
+            requestBaseUrl,
             ipAddress
         });
 
@@ -668,7 +688,7 @@ async function resendRegistrationPin({ email, ipAddress }) {
 // Funcion: requestPasswordReset
 // Aqui arranco la recuperacion por PIN.
 // Invalido PINes anteriores, genero uno nuevo, lo guardo hasheado y lo envio por correo.
-async function requestPasswordReset({ email, ipAddress }) {
+async function requestPasswordReset({ email, requestBaseUrl, ipAddress }) {
     const correo = ensureEmailAddress(email);
 
     return withTransaction(async (client) => {
@@ -726,7 +746,7 @@ async function requestPasswordReset({ email, ipAddress }) {
             [user.id_usuario, user.correo, tokenHash, expiresAt, ipAddress || ""]
         );
 
-        const resetUrl = `${config.appBaseUrl}/views/login.html?modo=reset&correo=${encodeURIComponent(user.correo)}`;
+        const resetUrl = `${normalizePublicBaseUrl(requestBaseUrl)}/views/login.html?modo=reset&correo=${encodeURIComponent(user.correo)}`;
         const userName = `${user.nombres} ${user.apellidos || ""}`.trim();
         const delivery = await sendPasswordResetEmail({
             to: user.correo,

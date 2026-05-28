@@ -13,6 +13,7 @@ const TEST_DUI = "12345678-9";
 const TEST_DUI_UPDATED = "87654321-0";
 const ADVANCE_TEST_CODE = "778899";
 const RECOVERY_TEST_PIN = "665544";
+const REGISTRATION_TEST_PIN = "112233";
 const CLEANUP_TABLES = [
     "movimientos_cuenta",
     "transacciones",
@@ -213,6 +214,36 @@ async function forceLatestRecoveryPin(userId, plainPin) {
     }
 }
 
+// Funcion: forceLatestRegistrationPin
+// Aqui fuerzo el ultimo PIN de activacion de registro para no depender
+// del correo durante la prueba automatica.
+async function forceLatestRegistrationPin(userId, plainPin) {
+    const result = await query(
+        `
+        WITH latest_pin AS (
+            SELECT id_codigo
+            FROM codigos_verificacion
+            WHERE usuario_id = $1
+              AND usado_en IS NULL
+            ORDER BY creado_en DESC
+            LIMIT 1
+        )
+        UPDATE codigos_verificacion
+        SET
+            codigo_hash = $2,
+            expira_en = NOW() + INTERVAL '15 minutes',
+            usado_en = NULL
+        WHERE id_codigo IN (SELECT id_codigo FROM latest_pin)
+        RETURNING id_codigo
+        `,
+        [userId, hashOneTimeToken(plainPin)]
+    );
+
+    if (!result.rows[0]) {
+        throw new Error("No encontre un PIN de activacion de registro para forzarlo en la base.");
+    }
+}
+
 // Funcion: ensureZeroedCounts
 // Aqui valido que el cierre haya dejado todas las tablas operativas en cero.
 async function ensureZeroedCounts() {
@@ -272,19 +303,38 @@ async function main() {
             201
         );
         assertHasMessage(registerResponse, "Registro");
-        assert.equal(registerResponse.requiresLogin, true, "El registro debe forzar login posterior.");
+        assert.equal(registerResponse.requiresVerification, true, "El registro debe exigir activacion por PIN.");
 
-        const loginResponse = await api.request(
+        const userId = await getLatestUserIdByEmail(TEST_EMAIL);
+        await forceLatestRegistrationPin(userId, REGISTRATION_TEST_PIN);
+
+        let loginBeforeVerificationRejected = false;
+        try {
+            await api.request(
+                "POST",
+                "/api/auth/login",
+                {
+                    email: TEST_EMAIL,
+                    password: TEST_PASSWORD
+                },
+                200
+            );
+        } catch (error) {
+            loginBeforeVerificationRejected = /verificada|activ/i.test(error.message);
+        }
+        assert.equal(loginBeforeVerificationRejected, true, "El login debia bloquearse antes de verificar la cuenta.");
+
+        const activationResponse = await api.request(
             "POST",
-            "/api/auth/login",
+            "/api/auth/register/verify",
             {
                 email: TEST_EMAIL,
-                password: TEST_PASSWORD
+                pin: REGISTRATION_TEST_PIN
             },
             200
         );
-        assert.ok(loginResponse.token, "Login debia devolver token.");
-        api.setToken(loginResponse.token);
+        assert.ok(activationResponse.token, "La activacion debia devolver token y abrir sesion.");
+        api.setToken(activationResponse.token);
 
         const sessionResponse = await api.request("GET", "/api/auth/session", undefined, 200);
         assert.equal(sessionResponse.user.correo, TEST_EMAIL, "La sesion activa no coincide con el usuario registrado.");
@@ -479,7 +529,6 @@ async function main() {
         );
         assertHasMessage(requestAdvanceCodeResponse, "Solicitud de codigo de adelanto");
 
-        const userId = await getLatestUserIdByEmail(TEST_EMAIL);
         await forceLatestAdvanceCode(userId, ADVANCE_TEST_CODE);
 
         const requestAdvanceResponse = await api.request(

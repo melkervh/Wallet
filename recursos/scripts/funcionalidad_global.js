@@ -2453,6 +2453,31 @@ function inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, f
         return;
     }
 
+    const campoCorreoRecuperacion = document.getElementById("recuperacion_modal_correo");
+    const campoCorreoReset = document.getElementById("reset_modal_correo");
+    const campoPinReset = document.getElementById("reset_modal_pin");
+
+    // Funcion: sincronizar correo entre pasos del modal
+    // Aqui mantengo el correo del primer formulario reflejado en el segundo,
+    // para que el usuario no tenga que escribirlo dos veces al recuperar acceso.
+    if (campoCorreoRecuperacion && campoCorreoReset && !campoCorreoRecuperacion.dataset.correoSincronizado) {
+        campoCorreoRecuperacion.addEventListener("input", function () {
+            establecer_valor("reset_modal_correo", campoCorreoRecuperacion.value);
+            bloquear_cambio_password_reset_modal(false);
+        });
+        campoCorreoRecuperacion.dataset.correoSincronizado = "true";
+    }
+
+    // Funcion: normalizar PIN del modal de recuperacion
+    // Aqui limpio el PIN para dejarlo solo numerico aunque el usuario pegue
+    // espacios o caracteres que no correspondan.
+    if (campoPinReset && !campoPinReset.dataset.pinNormalizado) {
+        campoPinReset.addEventListener("input", function () {
+            campoPinReset.value = clean_pin_visual(campoPinReset.value);
+        });
+        campoPinReset.dataset.pinNormalizado = "true";
+    }
+
     if (!formularioRecuperacionModal.dataset.inicializado) {
         formularioRecuperacionModal.addEventListener("submit", async function (evento) {
             evento.preventDefault();
@@ -2470,9 +2495,16 @@ function inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, f
 
                 mostrar_mensaje_grupo(["mensaje_recuperacion_modal", "mensaje_reset_modal"], "Si tu cuenta existe, revisa tu correo para continuar.", "exito");
                 preparar_modal_reset_con_datos(correo, "");
+                document.getElementById("reset_modal_pin")?.focus();
+                mostrar_mensaje_grupo(
+                    ["mensaje_reset_modal"],
+                    "Ahora ingresa el PIN recibido en tu correo y luego valida el acceso.",
+                    "info"
+                );
 
                 if (respuesta.previewMode && respuesta.previewPin) {
                     preparar_modal_reset_con_datos(correo, respuesta.previewPin);
+                    document.getElementById("reset_modal_pin")?.focus();
                     mostrar_mensaje_grupo(
                         ["mensaje_reset_modal"],
                         "El canal real no esta configurado todavia, asi que cargue un PIN temporal para que puedas seguir probando localmente.",
@@ -2562,6 +2594,8 @@ function inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, f
 
 function preparar_modal_recuperacion_seguridad() {
     const correo = obtener_usuario_actual()?.correo || "";
+    document.getElementById("formulario_recuperacion_modal")?.reset();
+    document.getElementById("formulario_reset_modal")?.reset();
     preparar_modal_reset_con_datos(correo, "");
     establecer_valor("recuperacion_modal_correo", correo);
     mostrar_mensaje_grupo(["mensaje_recuperacion_modal"], "Te enviaremos un PIN temporal al correo asociado a tu cuenta.", "info", true);
@@ -2628,10 +2662,11 @@ function habilitar_cambio_password_reset_modal() {
 
 async function validar_pin_recuperacion_modal() {
     let correo = obtener_valor("reset_modal_correo");
-    const pin = obtener_valor("reset_modal_pin");
+    const pin = clean_pin_visual(obtener_valor("reset_modal_pin"));
 
     try {
         correo = validar_correo_frontend(correo);
+        establecer_valor("reset_modal_pin", pin);
         if (!pin) {
             throw new Error("Completa tu correo y el PIN para validar el acceso.");
         }

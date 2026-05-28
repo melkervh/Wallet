@@ -187,15 +187,15 @@ select {
     letter-spacing: 0.3px;
     display: inline-flex;
     align-items: center;
-    gap: 0.7rem;
+    gap: 0;
 }
 
 .marca_wallet_logos {
     display: inline-flex;
     align-items: center;
     position: relative;
-    width: 132px;
-    height: 32px;
+    width: 188px;
+    height: 46px;
 }
 
 .marca_wallet_logo {
@@ -213,8 +213,7 @@ select {
 }
 
 .marca_wallet_texto {
-    font-weight: 700;
-    color: var(--color_texto_principal);
+    display: none;
 }
 
 :root[data-theme="dark"] .marca_wallet_logo_claro {
@@ -2379,6 +2378,11 @@ select:focus {
     .panel_alertas {
         right: -4px;
         top: 46px;
+    }
+
+    .marca_wallet_logos {
+        width: 152px;
+        height: 38px;
     }
 
     .barra_lateral_forex {

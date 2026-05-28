@@ -79,6 +79,47 @@ function sendText(response, statusCode, text) {
     response.end(text);
 }
 
+// Funcion: getRequestBaseUrl
+// Aqui reconstruyo la URL publica real desde la solicitud actual.
+// Esto evita depender de APP_BASE_URL cuando el proyecto corre por tunel y el host cambia.
+function getRequestBaseUrl(request) {
+    const originHeader = String(request.headers.origin || "").trim();
+    if (/^https?:\/\//i.test(originHeader)) {
+        return originHeader.replace(/\/+$/, "");
+    }
+
+    const forwardedHost = String(request.headers["x-forwarded-host"] || request.headers.host || "")
+        .split(",")[0]
+        .trim();
+
+    let protocol = String(request.headers["x-forwarded-proto"] || "")
+        .split(",")[0]
+        .trim()
+        .toLowerCase();
+
+    if (!protocol) {
+        const rawCfVisitor = String(request.headers["cf-visitor"] || "").trim();
+        if (rawCfVisitor) {
+            try {
+                const parsedCfVisitor = JSON.parse(rawCfVisitor);
+                protocol = String(parsedCfVisitor.scheme || "").trim().toLowerCase();
+            } catch (error) {
+                // Aqui ignoro errores de parseo y sigo con el fallback normal.
+            }
+        }
+    }
+
+    if (!protocol) {
+        protocol = "http";
+    }
+
+    if (forwardedHost) {
+        return `${protocol}://${forwardedHost}`;
+    }
+
+    return String(config.appBaseUrl || "").replace(/\/+$/, "");
+}
+
 // Funcion: enforceJsonContentType
 // Aqui valido que las rutas API que esperan cuerpo reciban JSON real.
 // Lo hago temprano para cortar peticiones mal formadas antes de leer el body completo.
@@ -227,6 +268,7 @@ async function handleApiRequest(request, response, url) {
             documentId: body.documentId,
             address: body.address,
             password: body.password,
+            requestBaseUrl: getRequestBaseUrl(request),
             ipAddress: getClientIpAddress(request),
             userAgent: String(request.headers["user-agent"] || "web")
         });
@@ -262,6 +304,7 @@ async function handleApiRequest(request, response, url) {
         const body = await parseJsonBody(request);
         const result = await authController.resendRegistrationPin({
             email: body.email,
+            requestBaseUrl: getRequestBaseUrl(request),
             ipAddress: getClientIpAddress(request)
         });
 
@@ -278,6 +321,7 @@ async function handleApiRequest(request, response, url) {
         const body = await parseJsonBody(request);
         const result = await authController.requestPasswordReset({
             email: body.email,
+            requestBaseUrl: getRequestBaseUrl(request),
             ipAddress: getClientIpAddress(request)
         });
 

@@ -12,20 +12,21 @@ const PAGINAS_PRIVADAS = new Set([
 ]);
 
 const PREFIJOS_TELEFONICOS = [
-    { codigo: "+503", pais: "El Salvador", ejemplo: "70000000" },
-    { codigo: "+502", pais: "Guatemala", ejemplo: "51234567" },
-    { codigo: "+504", pais: "Honduras", ejemplo: "91234567" },
-    { codigo: "+505", pais: "Nicaragua", ejemplo: "81234567" },
-    { codigo: "+506", pais: "Costa Rica", ejemplo: "61234567" },
-    { codigo: "+507", pais: "Panama", ejemplo: "61234567" },
-    { codigo: "+52", pais: "Mexico", ejemplo: "5512345678" },
-    { codigo: "+1", pais: "Estados Unidos", ejemplo: "2025550123" },
-    { codigo: "+57", pais: "Colombia", ejemplo: "3001234567" },
-    { codigo: "+34", pais: "Espana", ejemplo: "612345678" }
+    { codigo: "+503", pais: "El Salvador", bandera: "🇸🇻", ejemplo: "70000000" },
+    { codigo: "+502", pais: "Guatemala", bandera: "🇬🇹", ejemplo: "51234567" },
+    { codigo: "+504", pais: "Honduras", bandera: "🇭🇳", ejemplo: "91234567" },
+    { codigo: "+505", pais: "Nicaragua", bandera: "🇳🇮", ejemplo: "81234567" },
+    { codigo: "+506", pais: "Costa Rica", bandera: "🇨🇷", ejemplo: "61234567" },
+    { codigo: "+507", pais: "Panama", bandera: "🇵🇦", ejemplo: "61234567" },
+    { codigo: "+52", pais: "Mexico", bandera: "🇲🇽", ejemplo: "5512345678" },
+    { codigo: "+1", pais: "Estados Unidos", bandera: "🇺🇸", ejemplo: "2025550123" },
+    { codigo: "+57", pais: "Colombia", bandera: "🇨🇴", ejemplo: "3001234567" },
+    { codigo: "+34", pais: "Espana", bandera: "🇪🇸", ejemplo: "612345678" }
 ];
 
 const estado_aplicacion = {
     aplicandoFavorito: false,
+    avisoBaseVaciaMostrado: false,
     bootstrap: null,
     centros: {
         adelanto: null,
@@ -796,7 +797,7 @@ function poblar_selector_prefijo_telefono(selector, inputId, prefijoInicial) {
 
     if (!selector.dataset.prefijosCargados) {
         selector.innerHTML = PREFIJOS_TELEFONICOS.map(function (prefijo) {
-            return `<option value="${prefijo.codigo}">${prefijo.pais} (${prefijo.codigo})</option>`;
+            return `<option value="${prefijo.codigo}" title="${prefijo.pais}" aria-label="${prefijo.pais}">${prefijo.bandera || "🌍"} ${prefijo.codigo}</option>`;
         }).join("");
 
         selector.addEventListener("change", function () {
@@ -804,6 +805,11 @@ function poblar_selector_prefijo_telefono(selector, inputId, prefijoInicial) {
             const configuracionPrefijo = PREFIJOS_TELEFONICOS.find(function (prefijo) {
                 return prefijo.codigo === selector.value;
             });
+
+            if (configuracionPrefijo) {
+                selector.setAttribute("title", `${configuracionPrefijo.pais} (${configuracionPrefijo.codigo})`);
+                selector.setAttribute("aria-label", `${configuracionPrefijo.pais} ${configuracionPrefijo.codigo}`);
+            }
 
             if (inputTelefono && configuracionPrefijo?.ejemplo) {
                 inputTelefono.placeholder = configuracionPrefijo.ejemplo;
@@ -902,7 +908,9 @@ async function inicializar_login() {
     const formularioRegistro = document.getElementById("formulario_registro");
     const formularioRecuperacion = document.getElementById("formulario_recuperacion");
     const formularioReset = document.getElementById("formulario_reset_password");
+    const formularioActivacionRegistro = document.getElementById("formulario_activacion_registro");
     const botonValidarPin = document.getElementById("boton_validar_pin_reset");
+    const botonReenviarPinRegistro = document.getElementById("boton_reenviar_pin_registro");
     const selectorPrefijoTelefonoRegistro = document.getElementById("registro_prefijo_telefono");
     const inputTelefonoRegistro = document.getElementById("registro_telefono");
     const inputDuiRegistro = document.getElementById("registro_documento");
@@ -928,6 +936,9 @@ async function inicializar_login() {
         console.warn("No pude cargar el estado inicial del login:", error.message);
     }
 
+    inicializar_modales_wallet();
+    inicializar_activacion_registro_modal(formularioActivacionRegistro, botonReenviarPinRegistro);
+
     document.querySelectorAll("[data-modo-acceso]").forEach(function (boton) {
         boton.addEventListener("click", function () {
             activar_panel_acceso(boton.getAttribute("data-modo-acceso"));
@@ -941,11 +952,13 @@ async function inicializar_login() {
         });
     });
 
+    const modoUrl = obtener_parametro_url("modo");
     const modoInicial = estado_aplicacion.bootstrap?.requiresRegistration
         ? "registro"
-        : (obtener_parametro_url("modo") || "login");
+        : (modoUrl === "reset" ? "reset" : "login");
     activar_panel_acceso(modoInicial);
     sincronizar_reset_desde_url();
+    await sincronizar_activacion_registro_desde_url();
     inicializar_flujo_pin_recuperacion();
     mostrar_estado_sesion_desde_url();
     poblar_selector_prefijo_telefono(selectorPrefijoTelefonoRegistro, "registro_telefono", obtener_prefijo_telefono_por_defecto());
@@ -978,6 +991,10 @@ async function inicializar_login() {
             window.location.href = "principal.html";
         } catch (error) {
             mostrar_mensaje("mensaje_login", error.message || "No fue posible iniciar sesion.", "error");
+            if ((error.message || "").toLowerCase().includes("verificada")) {
+                preparar_modal_activacion_registro(correo, "");
+                abrir_modal_wallet("modal_activacion_registro");
+            }
         }
     });
 
@@ -1024,23 +1041,24 @@ async function inicializar_login() {
 
             mostrar_mensaje("mensaje_registro", respuesta.message || "Registro correcto.", "exito");
 
-            if (respuesta.token) {
-                guardar_sesion_desde_respuesta(respuesta);
-                window.location.href = "principal.html";
-                return;
-            }
-
-            establecer_valor("correo_usuario", obtener_valor("registro_correo"));
+            establecer_valor("correo_usuario", email);
             establecer_valor("contrasena_usuario", "");
             formularioRegistro.reset();
-            activar_panel_acceso("login");
-            mostrar_mensaje("mensaje_login", "Tu cuenta ya fue creada. Ahora inicia sesion para entrar.", "info");
             estado_aplicacion.bootstrap = {
                 hasUsers: true,
                 requiresRegistration: false,
                 totalUsers: Math.max(1, Number(estado_aplicacion.bootstrap?.totalUsers || 0))
             };
             aplicar_estado_bootstrap_login(estado_aplicacion.bootstrap);
+            preparar_modal_activacion_registro(email, respuesta.previewPin || "");
+            abrir_modal_wallet("modal_activacion_registro");
+            mostrar_mensaje(
+                "mensaje_activacion_registro",
+                respuesta.previewMode && respuesta.previewPin
+                    ? "El entorno esta en preview, asi que ya cargue el PIN temporal para que completes la activacion."
+                    : (respuesta.message || "Revisa tu correo para activar la cuenta."),
+                respuesta.previewMode ? "info" : "exito"
+            );
         } catch (error) {
             mostrar_mensaje("mensaje_registro", error.message || "No fue posible completar el registro.", "error");
         }
@@ -1146,6 +1164,15 @@ function aplicar_estado_bootstrap_login(bootstrap) {
             avisoBootstrap.textContent = "La base esta vacia. Primero debes registrar la cuenta inicial para habilitar el acceso.";
             avisoBootstrap.classList.remove("oculto");
         }
+
+        // Aqui lanzo un aviso de apertura cuando no existe ningun usuario.
+        // La idea es que el visitante entienda de inmediato que la web detecto
+        // una base vacia y que por eso se le llevo directo al registro inicial.
+        if (!estado_aplicacion.avisoBaseVaciaMostrado) {
+            mostrar_aviso_base_vacia();
+            estado_aplicacion.avisoBaseVaciaMostrado = true;
+        }
+
         mostrar_mensaje(
             "mensaje_registro",
             "Todavia no existe ningun usuario. Registra la primera cuenta para habilitar el inicio de sesion.",
@@ -1166,9 +1193,35 @@ function aplicar_estado_bootstrap_login(bootstrap) {
         avisoBootstrap.classList.add("oculto");
     }
 
+    estado_aplicacion.avisoBaseVaciaMostrado = false;
+
     if (enlacesRecuperacion) {
         enlacesRecuperacion.style.display = "";
     }
+}
+
+// Funcion: mostrar_aviso_base_vacia
+// Aqui muestro una notificacion inicial cuando la web detecta que no hay
+// usuarios registrados. La interfaz ya cambia al panel de registro, pero
+// este aviso deja claro por que sucedio desde el momento en que abre la pagina.
+function mostrar_aviso_base_vacia() {
+    const titulo = "No hay usuarios registrados";
+    const texto = "La base esta vacia. Te llevamos directo al registro para crear la primera cuenta.";
+
+    if (window.Swal) {
+        window.Swal.fire({
+            icon: "info",
+            title: titulo,
+            text: texto,
+            confirmButtonText: "Ir al registro",
+            confirmButtonColor: obtener_color_css("--color_morado_principal", "#6f3df4"),
+            background: obtener_color_css("--color_superficie_solida", "#ffffff"),
+            color: obtener_color_css("--color_texto_principal", "#1d152d")
+        });
+        return;
+    }
+
+    mostrar_toast_lateral(texto, "info");
 }
 
 function inicializar_flujo_pin_recuperacion() {
@@ -1196,6 +1249,120 @@ function preparar_panel_reset(correo, pin) {
     }
 
     bloquear_cambio_password_reset(true);
+}
+
+// Funcion: clean_pin_visual
+// Aqui limpio el PIN para dejarlo solo numerico antes de enviarlo al backend.
+function clean_pin_visual(valor) {
+    return String(valor || "").replace(/\D/g, "").slice(0, 6);
+}
+
+// Funcion: preparar_modal_activacion_registro
+// Aqui precargo el correo y el PIN dentro del modal de activacion.
+// Lo reutilizo tanto al terminar el registro como cuando el usuario aterriza desde el enlace del correo.
+function preparar_modal_activacion_registro(correo, pin) {
+    establecer_valor("activacion_registro_correo", correo || "");
+    establecer_valor("activacion_registro_pin", clean_pin_visual(pin));
+}
+
+// Funcion: verificar_activacion_registro
+// Este es el submit real de activacion:
+// toma correo y PIN desde el modal, llama POST /api/auth/register/verify
+// y si todo sale bien guarda la sesion devuelta por el backend.
+async function verificar_activacion_registro(opciones = {}) {
+    const correo = validar_correo_frontend(opciones.correo || obtener_valor("activacion_registro_correo"));
+    const pin = clean_pin_visual(opciones.pin || obtener_valor("activacion_registro_pin"));
+
+    if (!pin) {
+        throw new Error("Ingresa el PIN de activacion enviado al correo.");
+    }
+
+    mostrar_mensaje(
+        "mensaje_activacion_registro",
+        opciones.automatico ? "Validando enlace de activacion..." : "Validando PIN de activacion...",
+        "info"
+    );
+
+    const respuesta = await consumir_api("/api/auth/register/verify", {
+        method: "POST",
+        omitirAutorizacion: true,
+        body: {
+            email: correo,
+            pin
+        }
+    });
+
+    guardar_sesion_desde_respuesta(respuesta);
+    mostrar_mensaje("mensaje_activacion_registro", respuesta.message || "Cuenta activada correctamente.", "exito");
+    cerrar_modal_wallet("modal_activacion_registro");
+    limpiar_query_login();
+    window.location.href = "principal.html";
+    return respuesta;
+}
+
+// Funcion: reenviar_pin_activacion_registro
+// Aqui disparo otro correo de activacion para una cuenta aun pendiente.
+async function reenviar_pin_activacion_registro() {
+    const correo = validar_correo_frontend(obtener_valor("activacion_registro_correo"));
+    mostrar_mensaje("mensaje_activacion_registro", "Reenviando PIN de activacion...", "info");
+
+    const respuesta = await consumir_api("/api/auth/register/resend", {
+        method: "POST",
+        omitirAutorizacion: true,
+        body: {
+            email: correo
+        }
+    });
+
+    if (respuesta.previewMode && respuesta.previewPin) {
+        establecer_valor("activacion_registro_pin", respuesta.previewPin);
+    }
+
+    mostrar_mensaje(
+        "mensaje_activacion_registro",
+        respuesta.previewMode && respuesta.previewPin
+            ? "Se genero un nuevo PIN temporal y ya quedo cargado en el modal."
+            : (respuesta.message || "Te reenviamos un nuevo PIN de activacion."),
+        respuesta.previewMode ? "info" : "exito"
+    );
+}
+
+// Funcion: inicializar_activacion_registro_modal
+// Aqui engancho las acciones del modal:
+// verificar el PIN o reenviarlo si la activacion todavia esta pendiente.
+function inicializar_activacion_registro_modal(formulario, botonReenviar) {
+    const campoPin = document.getElementById("activacion_registro_pin");
+
+    if (campoPin && !campoPin.dataset.pinNormalizado) {
+        campoPin.addEventListener("input", function () {
+            campoPin.value = clean_pin_visual(campoPin.value);
+        });
+        campoPin.dataset.pinNormalizado = "true";
+    }
+
+    if (formulario && !formulario.dataset.inicializado) {
+        formulario.addEventListener("submit", async function (evento) {
+            evento.preventDefault();
+
+            try {
+                await verificar_activacion_registro();
+            } catch (error) {
+                mostrar_mensaje("mensaje_activacion_registro", error.message || "No fue posible activar la cuenta.", "error");
+            }
+        });
+        formulario.dataset.inicializado = "true";
+    }
+
+    if (botonReenviar && !botonReenviar.dataset.inicializado) {
+        botonReenviar.addEventListener("click", async function () {
+            try {
+                await reenviar_pin_activacion_registro();
+            } catch (error) {
+                mostrar_mensaje("mensaje_activacion_registro", error.message || "No fue posible reenviar el PIN.", "error");
+            }
+        });
+        botonReenviar.dataset.inicializado = "true";
+    }
 }
 
 function bloquear_cambio_password_reset(limpiarCampos) {
@@ -1628,7 +1795,7 @@ function inicializar_formularios_principal() {
                         bankId: obtener_valor("tarjeta_banco_id"),
                         alias: obtener_valor("tarjeta_alias"),
                         brand: obtener_valor("tarjeta_marca"),
-                        type: obtener_valor("tarjeta_tipo"),
+                        cardType: obtener_valor("tarjeta_tipo"),
                         last4: obtener_valor("tarjeta_ultimos4"),
                         holderName: obtener_valor("tarjeta_titular"),
                         dailyLimit: obtener_valor("tarjeta_limite_diario"),
@@ -2103,6 +2270,11 @@ function sincronizar_pago_servicio_desde_vinculo() {
     inputIdentificador.value = servicio.identificadorCliente || "";
     inputIdentificador.readOnly = true;
     selectProveedor.value = servicio.proveedorId || "";
+
+    // Aqui mantengo coherente el formulario:
+    // si el usuario eligio un servicio ya vinculado, el proveedor manual
+    // deja de ser una decision libre y pasa a reflejar el proveedor real del contrato.
+    // Asi evito mandar combinaciones ambiguas al backend.
 }
 
 function renderizar_centro_adelanto(data) {
@@ -2201,6 +2373,26 @@ function inicializar_modales_wallet() {
         }
     });
 
+    document.querySelectorAll(".modal_wallet").forEach(function (modal) {
+        if (modal.dataset.cierreFondo) {
+            return;
+        }
+
+        modal.addEventListener("click", function (evento) {
+            const rect = modal.getBoundingClientRect();
+            const clicDentro =
+                evento.clientX >= rect.left &&
+                evento.clientX <= rect.right &&
+                evento.clientY >= rect.top &&
+                evento.clientY <= rect.bottom;
+
+            if (!clicDentro) {
+                cerrar_modal_wallet(modal.id);
+            }
+        });
+        modal.dataset.cierreFondo = "true";
+    });
+
     document.querySelectorAll("[data-cerrar-modal]").forEach(function (boton) {
         if (boton.dataset.inicializado) {
             return;
@@ -2248,6 +2440,11 @@ function cerrar_modal_wallet(id) {
 function preparar_modal_wallet(id) {
     if (id === "modal_recuperacion_seguridad") {
         preparar_modal_recuperacion_seguridad();
+        return;
+    }
+
+    if (id === "modal_pagar_servicio_wallet") {
+        sincronizar_pago_servicio_desde_vinculo();
     }
 }
 
@@ -4304,6 +4501,38 @@ function sincronizar_reset_desde_url() {
     if (pin) {
         preparar_panel_reset(correo || obtener_valor("reset_correo"), pin);
         mostrar_mensaje("mensaje_reset_password", "PIN cargado desde el enlace de recuperacion.", "info");
+    }
+}
+
+// Funcion: sincronizar_activacion_registro_desde_url
+// Aqui leo el enlace del correo de activacion.
+// Si el enlace trae PIN y correo, intento cerrar la activacion automaticamente;
+// si solo trae correo, abro el modal ya precargado para que la persona complete el PIN.
+async function sincronizar_activacion_registro_desde_url() {
+    const modo = obtener_parametro_url("modo");
+    const correo = obtener_parametro_url("correo");
+    const pin = obtener_parametro_url("pin");
+
+    if (modo !== "activar") {
+        return;
+    }
+
+    preparar_modal_activacion_registro(correo, pin);
+    abrir_modal_wallet("modal_activacion_registro");
+
+    if (!correo || !pin) {
+        mostrar_mensaje("mensaje_activacion_registro", "Completa el PIN para terminar la activacion de la cuenta.", "info");
+        return;
+    }
+
+    try {
+        await verificar_activacion_registro({
+            correo,
+            pin,
+            automatico: true
+        });
+    } catch (error) {
+        mostrar_mensaje("mensaje_activacion_registro", error.message || "No fue posible validar el enlace de activacion.", "error");
     }
 }
 

@@ -1,4 +1,4 @@
-const { withTransaction } = require("../db");
+const { query, withTransaction } = require("../db");
 const {
     HttpError,
     cleanText,

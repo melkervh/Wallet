@@ -9,7 +9,13 @@
 <body>
     <header class="barra_superior">
         <div class="contenedor barra_superior_interior">
-            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <a href="principal.html" class="marca_wallet" aria-label="Wallet Digital">
+                <span class="marca_wallet_logos" aria-hidden="true">
+                    <img src="../recursos/imagenes/Nova%20Black.png" alt="" class="marca_wallet_logo marca_wallet_logo_claro">
+                    <img src="../recursos/imagenes/Nova%20white.png" alt="" class="marca_wallet_logo marca_wallet_logo_oscuro">
+                </span>
+                <span class="marca_wallet_texto">Wallet Digital</span>
+            </a>
             <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
@@ -85,7 +91,7 @@
                                 <span class="campo_telefono_etiqueta">Telefono</span>
                                 <div class="campo_telefono_compuesto_interior">
                                     <div>
-                                        <label for="registro_prefijo_telefono">Pais</label>
+                                        <label for="registro_prefijo_telefono">Bandera</label>
                                         <select id="registro_prefijo_telefono" name="registro_prefijo_telefono" autocomplete="off" required></select>
                                     </div>
                                     <div>
@@ -168,6 +174,33 @@
             </article>
         </section>
     </main>
+
+    <dialog id="modal_activacion_registro" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+            <div class="modal_wallet_cabecera">
+                <div>
+                    <h2>Activar cuenta</h2>
+                    <p>Ingresa el PIN que llego a tu correo o usa el enlace del mensaje para cerrar el registro correctamente.</p>
+                </div>
+                <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_activacion_registro" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal_wallet_contenido">
+                <form id="formulario_activacion_registro" class="formulario" novalidate>
+                    <label for="activacion_registro_correo">Correo</label>
+                    <input id="activacion_registro_correo" name="activacion_registro_correo" type="email" placeholder="tucorreo@ejemplo.com" required>
+
+                    <label for="activacion_registro_pin">PIN de activacion</label>
+                    <input id="activacion_registro_pin" name="activacion_registro_pin" type="text" inputmode="numeric" maxlength="6" placeholder="123456" required>
+
+                    <div class="fila_acciones_modales fila_acciones_modales_login">
+                        <button id="boton_reenviar_pin_registro" type="button" class="boton boton-secundario">Reenviar PIN</button>
+                        <button type="submit" class="boton boton-primario">Activar e ingresar</button>
+                    </div>
+                    <p id="mensaje_activacion_registro" class="texto_estado_formulario ayuda_formulario">Tu cuenta queda bloqueada para login hasta completar esta verificacion.</p>
+                </form>
+            </div>
+        </div>
+    </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../recursos/scripts/funcionalidad_global.js"></script>

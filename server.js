@@ -235,6 +235,40 @@ async function handleApiRequest(request, response, url) {
         return;
     }
 
+    if (request.method === "POST" && url.pathname === "/api/auth/register/verify") {
+        enforceRateLimit(request, "auth-register-verify", {
+            limit: 8,
+            windowMs: 20 * 60 * 1000
+        });
+
+        const body = await parseJsonBody(request);
+        const result = await authController.verifyRegistrationPin({
+            email: body.email,
+            pin: body.pin,
+            ipAddress: getClientIpAddress(request),
+            userAgent: String(request.headers["user-agent"] || "web")
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/auth/register/resend") {
+        enforceRateLimit(request, "auth-register-resend", {
+            limit: 5,
+            windowMs: 30 * 60 * 1000
+        });
+
+        const body = await parseJsonBody(request);
+        const result = await authController.resendRegistrationPin({
+            email: body.email,
+            ipAddress: getClientIpAddress(request)
+        });
+
+        sendJson(response, 200, result);
+        return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/auth/password-reset/request") {
         enforceRateLimit(request, "auth-password-reset-request", {
             limit: 4,

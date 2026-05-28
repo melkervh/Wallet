@@ -116,6 +116,51 @@ function buildPasswordResetMessage({ userName, pin, resetUrl, expiresInMinutes }
     };
 }
 
+// Funcion: buildRegistrationVerificationMessage
+// Aqui armo el correo que confirma el alta inicial de la cuenta.
+// Incluyo PIN y enlace directo para que la activacion pueda cerrarse
+// tanto desde un modal como desde el boton del correo.
+function buildRegistrationVerificationMessage({ userName, pin, activationUrl, expiresInMinutes }) {
+    const saludo = userName ? `Hola ${userName},` : "Hola,";
+    const text = [
+        saludo,
+        "",
+        "Tu cuenta en Wallet Digital ya fue creada.",
+        "Antes de iniciar sesion, necesitamos verificar que el correo realmente te pertenece.",
+        `PIN de activacion: ${pin}`,
+        `Enlace directo: ${activationUrl}`,
+        `Este PIN vence en ${expiresInMinutes} minutos.`,
+        "",
+        "Si no realizaste este registro, puedes ignorar este mensaje."
+    ].join("\n");
+
+    const html = buildEmailShell({
+        pretitle: "Activacion de cuenta",
+        title: "Confirma tu correo",
+        intro: "Tu wallet ya fue creada. Para proteger el acceso, activa la cuenta con este PIN o usando el boton directo del correo.",
+        badge: [
+            '<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#765cff; margin-bottom:8px; font-weight:700;">PIN de activacion</div>',
+            `<div style="font-size:34px; line-height:1; font-weight:800; letter-spacing:0.14em; color:#1d1830;">${pin}</div>`,
+            `<div style="margin-top:10px; font-size:13px; color:#766b98;">Vence en ${expiresInMinutes} minutos</div>`
+        ].join(""),
+        bodyBlocks: [
+            `<strong style="display:block; color:#1d1830;">${saludo}</strong>`,
+            "Una vez verifiques el correo, la app cerrara el registro y te dejara entrar a tu wallet con normalidad."
+        ],
+        action: {
+            label: "Activar mi cuenta",
+            url: activationUrl
+        },
+        footerNote: "Este PIN solo sirve para activar el correo de la cuenta recien creada. Si no fuiste tu, no compartas el codigo."
+    });
+
+    return {
+        subject: "Activa tu cuenta | Wallet Digital",
+        text,
+        html
+    };
+}
+
 // Funcion: buildSalaryAdvanceCodeMessage
 // Aqui preparo el correo que autoriza un adelanto salarial con un codigo temporal.
 // Lo separo para poder reutilizar el contenido sin mezclar construccion y envio.
@@ -216,6 +261,19 @@ async function sendPasswordResetEmail({ to, userName, pin, resetUrl }) {
         };
     }
 
+    if (config.mail.previewMode) {
+        console.log("[wallet-mail-preview] Recuperacion de contrasena");
+        console.log(`Para: ${to}`);
+        console.log(`PIN: ${pin}`);
+        console.log(`URL: ${resetUrl}`);
+        return {
+            delivered: false,
+            preview: true,
+            previewPin: pin,
+            previewResetUrl: resetUrl
+        };
+    }
+
     try {
         const activeTransporter = await getTransporter();
         const info = await activeTransporter.sendMail({
@@ -252,6 +310,81 @@ async function sendPasswordResetEmail({ to, userName, pin, resetUrl }) {
     }
 }
 
+// Funcion: sendRegistrationVerificationEmail
+// Aqui envio el PIN que cierra el ciclo del registro.
+// Si el entorno esta en preview, devuelvo el PIN y la URL para seguir
+// probando el flujo sin depender de un servidor SMTP real.
+async function sendRegistrationVerificationEmail({ to, userName, pin, activationUrl }) {
+    const expiresInMinutes = config.registrationVerificationCodeMinutes;
+    const message = buildRegistrationVerificationMessage({
+        userName,
+        pin,
+        activationUrl,
+        expiresInMinutes
+    });
+
+    if (!config.mail.enabled) {
+        console.log("[wallet-mail-preview] Activacion de cuenta");
+        console.log(`Para: ${to}`);
+        console.log(`PIN: ${pin}`);
+        console.log(`URL: ${activationUrl}`);
+        return {
+            delivered: false,
+            preview: true,
+            previewPin: pin,
+            previewActivationUrl: activationUrl
+        };
+    }
+
+    if (config.mail.previewMode) {
+        console.log("[wallet-mail-preview] Activacion de cuenta");
+        console.log(`Para: ${to}`);
+        console.log(`PIN: ${pin}`);
+        console.log(`URL: ${activationUrl}`);
+        return {
+            delivered: false,
+            preview: true,
+            previewPin: pin,
+            previewActivationUrl: activationUrl
+        };
+    }
+
+    try {
+        const activeTransporter = await getTransporter();
+        const info = await activeTransporter.sendMail({
+            from: config.mail.from,
+            to,
+            subject: message.subject,
+            text: message.text,
+            html: message.html
+        });
+
+        return {
+            delivered: true,
+            preview: false,
+            messageId: info.messageId
+        };
+    } catch (error) {
+        console.warn("No se pudo enviar el correo real de activacion:", error.message);
+
+        if (config.mail.previewMode) {
+            console.log("[wallet-mail-preview] Activacion de cuenta");
+            console.log(`Para: ${to}`);
+            console.log(`PIN: ${pin}`);
+            console.log(`URL: ${activationUrl}`);
+            return {
+                delivered: false,
+                preview: true,
+                previewPin: pin,
+                previewActivationUrl: activationUrl,
+                deliveryError: error.message
+            };
+        }
+
+        throw error;
+    }
+}
+
 // Funcion: sendSalaryAdvanceCodeEmail
 // Aqui envio el codigo que autoriza un adelanto salarial.
 // Si el correo real no esta configurado, devuelvo un preview para que el flujo siga sirviendo en pruebas.
@@ -265,6 +398,18 @@ async function sendSalaryAdvanceCodeEmail({ to, userName, pin, amount }) {
     });
 
     if (!config.mail.enabled) {
+        console.log("[wallet-mail-preview] Codigo de adelanto salarial");
+        console.log(`Para: ${to}`);
+        console.log(`Codigo: ${pin}`);
+        console.log(`Monto: ${amount}`);
+        return {
+            delivered: false,
+            preview: true,
+            previewPin: pin
+        };
+    }
+
+    if (config.mail.previewMode) {
         console.log("[wallet-mail-preview] Codigo de adelanto salarial");
         console.log(`Para: ${to}`);
         console.log(`Codigo: ${pin}`);
@@ -312,6 +457,7 @@ async function sendSalaryAdvanceCodeEmail({ to, userName, pin, amount }) {
 }
 
 module.exports = {
+    sendRegistrationVerificationEmail,
     sendPasswordResetEmail,
     sendSalaryAdvanceCodeEmail
 };

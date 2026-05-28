@@ -1,6 +1,6 @@
 GUIA PARA INSTALAR Y USAR EL TUNEL EN OTRO EQUIPO
 Proyecto: Wallet Digital
-Ruta del proyecto de referencia: C:\Users\jorge\OneDrive\Desktop\Wallet
+Ruta del proyecto de referencia: C:\Users\jorge\OneDrive\Desktop\WalletV0.2
 
 ======================================================================
 0. ARRANQUE RAPIDO CON COMANDOS
@@ -11,7 +11,7 @@ orden correcto de comandos.
 0.1 Entrar a la carpeta del proyecto
 Comando:
 
-cd C:\ruta\del\proyecto\Wallet
+cd C:\ruta\del\proyecto\WalletV0.2
 
 0.2 Instalar dependencias si aun no existen
 Comando:
@@ -160,7 +160,7 @@ Referencia oficial:
 
 Despues de instalar, valida con:
 
-cloudflared --version
+cloudflared.exe --version
 
 Si el sistema responde la version, ya esta instalado.
 
@@ -172,7 +172,7 @@ Si PowerShell dice que cloudflared no existe:
 
 1. cierra y abre otra terminal
 2. vuelve a probar:
-   cloudflared --version
+   cloudflared.exe --version
 3. si sigue sin funcionar, ubica el ejecutable manualmente
 
 Ejemplo de ruta comun:
@@ -209,7 +209,7 @@ Comando:
 cloudflared.exe tunnel --url http://127.0.0.1:3000
 
 Paso 4. esperar la URL publica
-Cloudflared mostrara una URL parecida a:
+Cloudflared.exe mostrara una URL parecida a:
 
 https://ejemplo.trycloudflare.com
 
@@ -310,7 +310,7 @@ Hay dos escenarios:
 - no requiere cuenta Cloudflare
 - no requiere dominio propio
 - comando simple:
-  cloudflared tunnel --url http://127.0.0.1:3000
+  cloudflared.exe tunnel --url http://127.0.0.1:3000
 
 10.2 Tunel administrado o mas estable
 - requiere cuenta Cloudflare
@@ -345,7 +345,7 @@ Si solo quieres replicar la demo en otra PC, usa esta receta:
    http://127.0.0.1:3000/api/health
 6. Instalar cloudflared
 7. Correr:
-   cloudflared tunnel --url http://127.0.0.1:3000
+   cloudflared.exe tunnel --url http://127.0.0.1:3000
 8. Copiar la URL trycloudflare
 9. Pegarla en:
    APP_BASE_URL=...

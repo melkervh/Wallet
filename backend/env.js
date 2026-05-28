@@ -73,6 +73,7 @@ const config = {
     appSecret: mergedEnv.APP_SECRET || "wallet-secret-dev",
     tokenDurationHours: Number(mergedEnv.TOKEN_DURATION_HOURS || 12),
     appBaseUrl: mergedEnv.APP_BASE_URL || `http://localhost:${port}`,
+    registrationVerificationCodeMinutes: Number(mergedEnv.REGISTRATION_VERIFICATION_CODE_MINUTES || 15),
     passwordResetTokenMinutes: Number(mergedEnv.PASSWORD_RESET_TOKEN_MINUTES || 30),
     advanceVerificationCodeMinutes: Number(mergedEnv.ADVANCE_VERIFICATION_CODE_MINUTES || 10),
     httpMaxBodyBytes: Number(mergedEnv.HTTP_MAX_BODY_BYTES || 1024 * 1024),

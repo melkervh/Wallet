@@ -16,8 +16,21 @@ async function getBootstrap() {
 
 // Funcion: register
 // Aqui delego el alta de usuario con cuenta principal incluida.
+// El modelo crea la cuenta, dispara el PIN por correo y deja pendiente la activacion final.
 async function register(payload) {
     return authModel.registerUser(payload);
+}
+
+// Funcion: verifyRegistrationPin
+// Aqui cierro la activacion de una cuenta nueva usando PIN o enlace de correo.
+async function verifyRegistrationPin(payload) {
+    return authModel.verifyRegistrationPin(payload);
+}
+
+// Funcion: resendRegistrationPin
+// Aqui reenvio un PIN de activacion cuando la persona todavia no completo la verificacion inicial.
+async function resendRegistrationPin(payload) {
+    return authModel.resendRegistrationPin(payload);
 }
 
 // Funcion: requestPasswordReset
@@ -60,6 +73,8 @@ module.exports = {
     login,
     getBootstrap,
     register,
+    verifyRegistrationPin,
+    resendRegistrationPin,
     requestPasswordReset,
     verifyPasswordResetPin,
     resetPassword,

@@ -11,7 +11,13 @@
     <!-- Barra superior fija -->
     <header class="barra_superior">
         <div class="contenedor barra_superior_interior">
-            <a href="principal.html" class="marca_wallet">Wallet Digital</a>
+            <a href="principal.html" class="marca_wallet" aria-label="Wallet Digital">
+                <span class="marca_wallet_logos" aria-hidden="true">
+                    <img src="../recursos/imagenes/Nova%20Black.png" alt="" class="marca_wallet_logo marca_wallet_logo_claro">
+                    <img src="../recursos/imagenes/Nova%20white.png" alt="" class="marca_wallet_logo marca_wallet_logo_oscuro">
+                </span>
+                <span class="marca_wallet_texto">Wallet Digital</span>
+            </a>
             <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
@@ -481,23 +487,38 @@
         </div>
         <div class="modal_wallet_contenido">
         <form id="formulario_pago_servicio" class="formulario" novalidate>
-            <label for="pago_servicio_cuenta_id">Cuenta de cargo</label>
-            <select id="pago_servicio_cuenta_id" name="pago_servicio_cuenta_id" required></select>
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="pago_servicio_cuenta_id">Cuenta de cargo</label>
+                    <select id="pago_servicio_cuenta_id" name="pago_servicio_cuenta_id" required></select>
+                </div>
+                <div>
+                    <label for="pago_servicio_vinculado_id">Servicio vinculado</label>
+                    <select id="pago_servicio_vinculado_id" name="pago_servicio_vinculado_id"></select>
+                </div>
+            </div>
 
-            <label for="pago_servicio_vinculado_id">Servicio vinculado</label>
-            <select id="pago_servicio_vinculado_id" name="pago_servicio_vinculado_id"></select>
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="pago_servicio_proveedor_id">O proveedor manual / adelanto</label>
+                    <select id="pago_servicio_proveedor_id" name="pago_servicio_proveedor_id"></select>
+                </div>
+                <div>
+                    <label for="pago_servicio_identificador">Contrato si no esta vinculado</label>
+                    <input id="pago_servicio_identificador" name="pago_servicio_identificador" type="text" placeholder="00123456">
+                </div>
+            </div>
 
-            <label for="pago_servicio_proveedor_id">O proveedor manual / adelanto</label>
-            <select id="pago_servicio_proveedor_id" name="pago_servicio_proveedor_id"></select>
-
-            <label for="pago_servicio_identificador">Contrato si no esta vinculado</label>
-            <input id="pago_servicio_identificador" name="pago_servicio_identificador" type="text" placeholder="00123456">
-
-            <label for="pago_servicio_monto">Monto</label>
-            <input id="pago_servicio_monto" name="pago_servicio_monto" type="number" min="1" step="0.01" placeholder="35.00" required>
-
-            <label for="pago_servicio_concepto">Concepto</label>
-            <input id="pago_servicio_concepto" name="pago_servicio_concepto" type="text" placeholder="Pago de servicio">
+            <div class="rejilla_campos_dobles">
+                <div>
+                    <label for="pago_servicio_monto">Monto</label>
+                    <input id="pago_servicio_monto" name="pago_servicio_monto" type="number" min="1" step="0.01" placeholder="35.00" required>
+                </div>
+                <div>
+                    <label for="pago_servicio_concepto">Concepto</label>
+                    <input id="pago_servicio_concepto" name="pago_servicio_concepto" type="text" placeholder="Pago de servicio">
+                </div>
+            </div>
 
             <button type="submit" class="boton boton-secundario">Pagar servicio</button>
             <p id="mensaje_pagar_servicio_modal" class="texto_estado_formulario ayuda_formulario">Puedes pagar con un servicio vinculado o cargar manualmente un proveedor puntual.</p>

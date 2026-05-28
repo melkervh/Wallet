@@ -38,6 +38,9 @@ async function linkCard(userId, payload) {
         const expiryYear = Number(payload.expiryYear);
         const dailyLimit = Number(payload.dailyLimit || 0);
         const last4 = cleanText(payload.last4, 4).replace(/\D/g, "");
+        const cardType = cleanText(payload.cardType || payload.type, 20).toLowerCase();
+        const holderName = cleanText(payload.holderName, 120);
+        const brand = cleanText(payload.brand, 40);
 
         if (!accountId || !bankId) {
             throw new HttpError(400, "Selecciona la cuenta y el banco de la tarjeta.");
@@ -53,6 +56,18 @@ async function linkCard(userId, payload) {
 
         if (!expiryYear || expiryYear < new Date().getFullYear()) {
             throw new HttpError(400, "El anio de vencimiento no es valido.");
+        }
+
+        if (!["debito", "credito", "prepago"].includes(cardType)) {
+            throw new HttpError(400, "Selecciona un tipo de tarjeta valido.");
+        }
+
+        if (!holderName) {
+            throw new HttpError(400, "Ingresa el nombre del titular de la tarjeta.");
+        }
+
+        if (!brand) {
+            throw new HttpError(400, "Selecciona la marca de la tarjeta.");
         }
 
         const accountResult = await client.query(
@@ -126,11 +141,11 @@ async function linkCard(userId, payload) {
             [
                 accountId,
                 bankId,
-                cleanText(payload.alias, 80) || `${cleanText(payload.brand, 40)} terminada en ${last4}`,
-                cleanText(payload.brand, 40) || "Tarjeta",
-                cleanText(payload.cardType, 20) || "debito",
+                cleanText(payload.alias, 80) || `${brand} terminada en ${last4}`,
+                brand || "Tarjeta",
+                cardType,
                 last4,
-                cleanText(payload.holderName, 120),
+                holderName,
                 Number.isFinite(dailyLimit) ? dailyLimit : 0,
                 expiryMonth,
                 expiryYear,

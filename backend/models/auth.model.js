@@ -7,11 +7,15 @@ const {
     createOneTimePin,
     hashOneTimeToken
 } = require("../auth");
-const { sendPasswordResetEmail } = require("../mailer");
+const {
+    sendPasswordResetEmail,
+    sendRegistrationVerificationEmail
+} = require("../mailer");
 const {
     HttpError,
     createAccountNumber,
     createReference,
+    cleanText,
     ensureHumanName,
     ensureEmailAddress,
     ensurePhoneNumber,
@@ -93,6 +97,148 @@ async function getActiveRecoveryPinRecord(client, email, pin, lockRow = false) {
     };
 }
 
+// Funcion: buildRegistrationActivationUrl
+// Aqui construyo el enlace del correo que aterriza directo en la pantalla de activacion.
+// El frontend usa estos parametros para abrir el modal y, si vienen completos,
+// hasta puede cerrar la activacion automaticamente.
+function buildRegistrationActivationUrl(email, pin) {
+    return `${config.appBaseUrl}/views/login.html?modo=activar&correo=${encodeURIComponent(email)}&pin=${encodeURIComponent(pin)}`;
+}
+
+// Funcion: issueRegistrationVerificationCode
+// Aqui invalido codigos viejos, genero un PIN nuevo, lo guardo hasheado
+// y disparo el correo que cierra el ciclo del registro.
+// Reutilizo codigos_verificacion porque la cuenta aun no puede solicitar adelantos
+// ni otras operaciones, asi que ese canal queda reservado para la activacion inicial.
+async function issueRegistrationVerificationCode(client, {
+    userId,
+    email,
+    userName,
+    ipAddress
+}) {
+    await client.query(
+        `
+        UPDATE codigos_verificacion
+        SET usado_en = NOW()
+        WHERE usuario_id = $1
+          AND canal = 'correo'
+          AND usado_en IS NULL
+          AND expira_en > NOW()
+        `,
+        [userId]
+    );
+
+    const plainPin = createOneTimePin(6);
+    const expiresAt = new Date(Date.now() + config.registrationVerificationCodeMinutes * 60 * 1000);
+    const pinHash = hashOneTimeToken(plainPin);
+
+    await client.query(
+        `
+        INSERT INTO codigos_verificacion (
+            usuario_id,
+            canal,
+            destino,
+            codigo_hash,
+            expira_en
+        )
+        VALUES ($1, 'correo', $2, $3, $4)
+        `,
+        [userId, email, pinHash, expiresAt]
+    );
+
+    const activationUrl = buildRegistrationActivationUrl(email, plainPin);
+    const delivery = await sendRegistrationVerificationEmail({
+        to: email,
+        userName,
+        pin: plainPin,
+        activationUrl
+    });
+
+    return {
+        plainPin,
+        activationUrl,
+        previewMode: Boolean(delivery.preview),
+        previewPin: delivery.preview ? plainPin : null,
+        previewActivationUrl: delivery.preview ? activationUrl : null
+    };
+}
+
+// Funcion: getActiveRegistrationPinRecord
+// Aqui valido que la cuenta siga pendiente de activacion y que el PIN del registro
+// corresponda al usuario correcto, siga vigente y no haya sido usado.
+async function getActiveRegistrationPinRecord(client, email, pin, lockRow = false) {
+    const correo = ensureEmailAddress(email);
+    const plainPin = cleanText(pin, 120).toUpperCase();
+
+    if (!correo || !plainPin) {
+        throw new HttpError(400, "Completa el correo y el PIN de activacion.");
+    }
+
+    const userResult = await client.query(
+        `
+        SELECT
+            id_usuario,
+            nombres,
+            apellidos,
+            estado
+        FROM usuarios
+        WHERE LOWER(correo) = $1
+        LIMIT 1
+        ${lockRow ? "FOR UPDATE" : ""}
+        `,
+        [correo]
+    );
+
+    const user = userResult.rows[0];
+    if (!user) {
+        throw new HttpError(400, "El PIN de activacion no es valido.");
+    }
+
+    if (user.estado === "activo") {
+        throw new HttpError(400, "La cuenta ya fue activada anteriormente.");
+    }
+
+    if (user.estado !== "suspendido") {
+        throw new HttpError(400, "El PIN de activacion no es valido.");
+    }
+
+    const pinResult = await client.query(
+        `
+        SELECT
+            id_codigo,
+            expira_en,
+            usado_en
+        FROM codigos_verificacion
+        WHERE usuario_id = $1
+          AND canal = 'correo'
+          AND codigo_hash = $2
+        ORDER BY creado_en DESC
+        LIMIT 1
+        ${lockRow ? "FOR UPDATE" : ""}
+        `,
+        [user.id_usuario, hashOneTimeToken(plainPin)]
+    );
+
+    const verification = pinResult.rows[0];
+    if (!verification) {
+        throw new HttpError(400, "El PIN de activacion no es valido.");
+    }
+
+    if (verification.usado_en) {
+        throw new HttpError(400, "El PIN de activacion ya fue utilizado.");
+    }
+
+    if (new Date(verification.expira_en) <= new Date()) {
+        throw new HttpError(400, "El PIN de activacion ya vencio.");
+    }
+
+    return {
+        user,
+        verification,
+        plainPin
+    };
+}
+
 // Funcion: loginUser
 // Aqui resuelvo el inicio de sesion completo:
 // valido credenciales, controlo intentos fallidos, rehasheo si hace falta,
@@ -126,6 +272,10 @@ async function loginUser({ email, password, ipAddress, userAgent }) {
         const row = result.rows[0];
         if (!row) {
             throw new HttpError(401, "Credenciales invalidas.");
+        }
+
+        if (row.estado === "suspendido") {
+            throw new HttpError(403, "La cuenta aun no ha sido verificada. Revisa tu correo y activa el acceso con el PIN enviado.");
         }
 
         if (row.estado !== "activo") {
@@ -210,7 +360,7 @@ async function loginUser({ email, password, ipAddress, userAgent }) {
 
 // Funcion: registerUser
 // Aqui doy de alta al usuario y le dejo su wallet principal operativa desde el primer minuto.
-// Tambien creo la credencial, aplico el bono de bienvenida, registro movimiento y genero alerta.
+// La diferencia es que ahora no cierro el ciclo hasta que el correo quede verificado con PIN o enlace.
 async function registerUser({
     firstName,
     lastName,
@@ -261,7 +411,7 @@ async function registerUser({
                 direccion,
                 estado
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'activo')
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'suspendido')
             RETURNING id_usuario
             `,
             [
@@ -392,12 +542,125 @@ async function registerUser({
             level: "informativo"
         });
 
+        const userName = `${nombres} ${apellidos}`.trim();
+        const verificationDelivery = await issueRegistrationVerificationCode(client, {
+            userId,
+            email: correo,
+            userName,
+            ipAddress
+        });
+
         return {
-            message: "Registro completado. Ya puedes iniciar sesion. Tu cuenta principal recibio un bono de bienvenida de $50.00.",
-            requiresLogin: true,
+            message: "Registro completado. Verifica tu correo para activar la cuenta y terminar el acceso inicial.",
+            requiresVerification: true,
             account,
             isFirstSystemUser,
-            user: await getSession(userId, client).then((session) => session.user)
+            activationEmail: correo,
+            previewMode: verificationDelivery.previewMode,
+            previewPin: verificationDelivery.previewPin,
+            previewActivationUrl: verificationDelivery.previewActivationUrl
+        };
+    });
+}
+
+// Funcion: verifyRegistrationPin
+// Aqui cierro la activacion del registro: valido el PIN, marco el correo como verificado,
+// consumo el codigo y ya devuelvo una sesion real para que el login no quede a medias.
+async function verifyRegistrationPin({ email, pin, ipAddress, userAgent }) {
+    return withTransaction(async (client) => {
+        const { user, verification } = await getActiveRegistrationPinRecord(client, email, pin, true);
+
+        await client.query(
+            `
+            UPDATE usuarios
+            SET
+                estado = 'activo',
+                actualizado_en = NOW()
+            WHERE id_usuario = $1
+            `,
+            [user.id_usuario]
+        );
+
+        await client.query(
+            `
+            UPDATE codigos_verificacion
+            SET usado_en = NOW()
+            WHERE usuario_id = $1
+              AND canal = 'correo'
+              AND usado_en IS NULL
+            `,
+            [user.id_usuario]
+        );
+
+        await insertAccessLog(client, {
+            userId: user.id_usuario,
+            ipAddress,
+            userAgent,
+            result: "exitoso",
+            detail: "Correo de registro verificado"
+        });
+
+        await insertAlert(client, {
+            userId: user.id_usuario,
+            type: "seguridad",
+            title: "Correo verificado",
+            message: "La cuenta ya quedo activada y lista para operar.",
+            level: "aceptacion"
+        });
+
+        const session = await getSession(user.id_usuario, client);
+
+        return {
+            message: "Cuenta activada correctamente. Bienvenido a tu wallet.",
+            activationConsumed: Boolean(verification.id_codigo),
+            token: createToken(user.id_usuario),
+            ...session
+        };
+    });
+}
+
+// Funcion: resendRegistrationPin
+// Aqui genero un PIN nuevo solo si la cuenta sigue pendiente.
+// Reutilizo la misma salida de preview para ambientes donde el correo real no este disponible.
+async function resendRegistrationPin({ email, ipAddress }) {
+    const correo = ensureEmailAddress(email);
+
+    return withTransaction(async (client) => {
+        const userResult = await client.query(
+            `
+            SELECT
+                id_usuario,
+                nombres,
+                apellidos,
+                correo,
+                estado
+            FROM usuarios
+            WHERE LOWER(correo) = $1
+            LIMIT 1
+            `,
+            [correo]
+        );
+
+        const user = userResult.rows[0];
+        if (!user || user.estado !== "suspendido") {
+            return {
+                message: "Si la cuenta sigue pendiente, te reenviamos un nuevo PIN de activacion."
+            };
+        }
+
+        const delivery = await issueRegistrationVerificationCode(client, {
+            userId: user.id_usuario,
+            email: user.correo,
+            userName: `${user.nombres || ""} ${user.apellidos || ""}`.trim(),
+            ipAddress
+        });
+
+        return {
+            message: "Te reenviamos un nuevo PIN de activacion al correo asociado a tu cuenta.",
+            activationEmail: user.correo,
+            previewMode: delivery.previewMode,
+            previewPin: delivery.previewPin,
+            previewActivationUrl: delivery.previewActivationUrl
         };
     });
 }
@@ -555,6 +818,8 @@ async function resetPasswordWithToken({ email, pin, newPassword, ipAddress, user
 module.exports = {
     loginUser,
     registerUser,
+    verifyRegistrationPin,
+    resendRegistrationPin,
     getBootstrapState,
     requestPasswordReset,
     verifyPasswordResetPin,

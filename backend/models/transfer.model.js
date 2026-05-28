@@ -145,6 +145,156 @@ function mapBeneficiaryRow(row) {
     };
 }
 
+// Funcion: mapInternalWalletBeneficiary
+// Aqui convierto una cuenta wallet interna en un destinatario publico temporal.
+// Lo uso cuando la transferencia apunta a una cuenta existente dentro de la base
+// aunque el usuario no haya guardado ese destino como favorito todavia.
+function mapInternalWalletBeneficiary(accountRow) {
+    const ownerName = cleanText(`${accountRow.nombres || ""} ${accountRow.apellidos || ""}`, 120) || accountRow.alias_cuenta;
+
+    return {
+        id: null,
+        nombre: ownerName,
+        alias: accountRow.alias_cuenta,
+        bancoDestino: accountRow.banco_destino || "Wallet Digital",
+        numeroCuentaDestino: accountRow.numero_cuenta,
+        tipoDestino: "wallet",
+        correoNotificacion: accountRow.correo || "",
+        telefonoNotificacion: accountRow.telefono || "",
+        esFavorito: false,
+        activo: true
+    };
+}
+
+// Funcion: getInternalDestinationAccount
+// Aqui busco si el numero de cuenta destino realmente pertenece a una wallet interna.
+// Si existe, bloqueo la cuenta cuando la transferencia es inmediata para evitar
+// carreras de saldo al acreditar el dinero.
+async function getInternalDestinationAccount(client, destinationAccountNumber, options = {}) {
+    const numeroCuenta = cleanText(destinationAccountNumber, 34);
+    if (!numeroCuenta) {
+        return null;
+    }
+
+    const shouldLock = Boolean(options.lockRow);
+    const result = await client.query(
+        `
+        SELECT
+            c.id_cuenta,
+            c.usuario_id,
+            c.alias_cuenta,
+            c.numero_cuenta,
+            c.saldo_disponible,
+            c.saldo_contable,
+            c.estado,
+            u.nombres,
+            u.apellidos,
+            u.correo,
+            u.telefono
+        FROM cuentas c
+        JOIN usuarios u
+            ON u.id_usuario = c.usuario_id
+        WHERE c.numero_cuenta = $1
+        LIMIT 1
+        ${shouldLock ? "FOR UPDATE" : ""}
+        `,
+        [numeroCuenta]
+    );
+
+    return result.rows[0] || null;
+}
+
+// Funcion: createRecipientMirrorTransaction
+// Aqui registro la contraparte de una transferencia wallet interna como abono
+// en la cuenta destino para que el saldo y el historial del receptor si se reflejen.
+async function createRecipientMirrorTransaction(client, {
+    destinationAccount,
+    sourceAccount,
+    senderUserId,
+    amount,
+    concept,
+    senderReference
+}) {
+    const senderName = cleanText(sourceAccount.sender_name || sourceAccount.alias_cuenta, 120) || sourceAccount.alias_cuenta;
+    const destinationBalance = toNumber(destinationAccount.saldo_disponible) + amount;
+    const destinationAccountingBalance = toNumber(destinationAccount.saldo_contable) + amount;
+
+    const recipientTransaction = await client.query(
+        `
+        INSERT INTO transacciones (
+            usuario_id,
+            tipo,
+            estado,
+            canal,
+            concepto,
+            referencia_interna,
+            referencia_externa,
+            monto_total,
+            fecha_ejecucion,
+            observaciones
+        )
+        VALUES ($1, 'deposito', 'completada', 'web', $2, $3, $4, $5, NOW(), $6)
+        RETURNING id_transaccion, referencia_interna
+        `,
+        [
+            destinationAccount.usuario_id,
+            `Transferencia recibida - ${concept}`,
+            createReference("REC"),
+            senderReference,
+            amount,
+            `Ingreso recibido desde ${senderName}`
+        ]
+    );
+
+    await client.query(
+        `
+        UPDATE cuentas
+        SET
+            saldo_disponible = $1,
+            saldo_contable = $2,
+            actualizado_en = NOW()
+        WHERE id_cuenta = $3
+        `,
+        [destinationBalance, destinationAccountingBalance, destinationAccount.id_cuenta]
+    );
+
+    await client.query(
+        `
+        INSERT INTO movimientos_cuenta (
+            transaccion_id,
+            cuenta_id,
+            tipo_movimiento,
+            monto,
+            descripcion,
+            saldo_resultante
+        )
+        VALUES ($1, $2, 'credito', $3, $4, $5)
+        `,
+        [
+            recipientTransaction.rows[0].id_transaccion,
+            destinationAccount.id_cuenta,
+            amount,
+            `${sourceAccount.alias_cuenta} -> ${destinationAccount.alias_cuenta}`,
+            destinationBalance
+        ]
+    );
+
+    if (destinationAccount.usuario_id !== senderUserId) {
+        await insertAlert(client, {
+            userId: destinationAccount.usuario_id,
+            type: "transferencia",
+            title: "Transferencia recibida",
+            message: `Recibiste ${amount.toFixed(2)} USD en ${destinationAccount.alias_cuenta}. Ref: ${senderReference}.`,
+            level: "aceptacion"
+        });
+    }
+
+    return {
+        transactionId: recipientTransaction.rows[0].id_transaccion,
+        balance: destinationBalance
+    };
+}
+
 // Funcion: createTransfer
 // Aqui ejecuto o programo una transferencia validando cuenta, saldo, fechas y beneficiario.
 // Tambien actualizo saldo, movimiento y alertas dentro de la misma transaccion.
@@ -157,6 +307,7 @@ async function createTransfer(userId, payload) {
         const transferMode = payload.transferType === "programada" ? "programada" : "inmediata";
         const concept = cleanText(payload.concept, 200);
         const internalReference = cleanText(payload.internalReference, 60) || createReference("TRX");
+        const destinationAccountNumber = cleanText(payload.destinationAccount, 34);
 
         if (!sourceAccountId || Number.isNaN(sourceAccountId)) {
             throw new HttpError(400, "Selecciona una cuenta de origen valida.");
@@ -220,10 +371,67 @@ async function createTransfer(userId, payload) {
             }
         }
 
+        // SELECT SQL:
+        // Aqui detecto si el numero destino pertenece a otra wallet de la misma base.
+        // Si existe, mas abajo acredito el dinero tambien en esa cuenta.
+        let internalDestination = await getInternalDestinationAccount(client, destinationAccountNumber, {
+            lockRow: transferMode === "inmediata"
+        });
+
+        if (internalDestination && Number(internalDestination.id_cuenta) === sourceAccountId) {
+            throw new HttpError(400, "No puedes transferir dinero hacia la misma cuenta de origen.");
+        }
+
+        if (internalDestination && internalDestination.estado !== "activa") {
+            throw new HttpError(400, "La cuenta wallet destino existe, pero no esta activa.");
+        }
+
         // INSERT o UPDATE SQL indirecto:
         // Aqui creo o reutilizo el beneficiario destino antes de insertar la transferencia.
-        const beneficiary = await insertOrUpdateBeneficiary(client, userId, payload);
-        const publicBeneficiary = stripBeneficiaryMeta(beneficiary);
+        let beneficiary = null;
+        let publicBeneficiary = null;
+
+        if (payload.beneficiaryId) {
+            beneficiary = await insertOrUpdateBeneficiary(client, userId, payload);
+            publicBeneficiary = stripBeneficiaryMeta(beneficiary);
+        } else if (internalDestination && payload.saveFavorite) {
+            beneficiary = await insertOrUpdateBeneficiary(client, userId, {
+                ...payload,
+                recipientName: cleanText(payload.recipientName, 120)
+                    || cleanText(`${internalDestination.nombres || ""} ${internalDestination.apellidos || ""}`, 120)
+                    || internalDestination.alias_cuenta,
+                destinationBank: cleanText(payload.destinationBank, 120) || "Wallet Digital",
+                destinationAccount: internalDestination.numero_cuenta,
+                destinationType: "wallet",
+                notificationEmail: internalDestination.correo || "",
+                notificationPhone: internalDestination.telefono || "",
+                saveFavorite: true
+            });
+            publicBeneficiary = stripBeneficiaryMeta(beneficiary);
+        } else if (internalDestination) {
+            publicBeneficiary = mapInternalWalletBeneficiary(internalDestination);
+        } else {
+            beneficiary = await insertOrUpdateBeneficiary(client, userId, payload);
+            publicBeneficiary = stripBeneficiaryMeta(beneficiary);
+        }
+
+        // SELECT SQL:
+        // Si la transferencia llega solo con beneficiaryId, aqui reutilizo el numero ya
+        // guardado en ese beneficiario para detectar igualmente una cuenta wallet interna.
+        if (!internalDestination && publicBeneficiary?.numeroCuentaDestino) {
+            internalDestination = await getInternalDestinationAccount(client, publicBeneficiary.numeroCuentaDestino, {
+                lockRow: transferMode === "inmediata"
+            });
+
+            if (internalDestination && Number(internalDestination.id_cuenta) === sourceAccountId) {
+                throw new HttpError(400, "No puedes transferir dinero hacia la misma cuenta de origen.");
+            }
+
+            if (internalDestination && internalDestination.estado !== "activa") {
+                throw new HttpError(400, "La cuenta wallet destino existe, pero no esta activa.");
+            }
+        }
+
         const transactionStatus = transferMode === "programada" ? "programada" : "completada";
 
         let transactionResult;
@@ -251,7 +459,7 @@ async function createTransfer(userId, payload) {
                 `,
                 [
                     userId,
-                    beneficiary.id,
+                    beneficiary?.id || null,
                     transactionStatus,
                     concept,
                     internalReference,
@@ -309,10 +517,28 @@ async function createTransfer(userId, payload) {
                     transaction.id_transaccion,
                     sourceAccountId,
                     amount,
-                    `${sourceAccount.alias_cuenta} -> ${beneficiary.nombre}`,
+                    `${sourceAccount.alias_cuenta} -> ${(publicBeneficiary?.nombre || publicBeneficiary?.alias || "Destino wallet")}`,
                     saldoResultante
                 ]
             );
+
+            // UPDATE + INSERT SQL:
+            // Si la cuenta destino tambien vive en la wallet, aqui creo el abono espejo.
+            // Esto hace que la transferencia se refleje en cuentas secundarias propias
+            // y tambien en cuentas principales de otros usuarios.
+            if (internalDestination) {
+                await createRecipientMirrorTransaction(client, {
+                    destinationAccount: internalDestination,
+                    sourceAccount: {
+                        alias_cuenta: sourceAccount.alias_cuenta,
+                        sender_name: sourceAccount.alias_cuenta
+                    },
+                    senderUserId: userId,
+                    amount,
+                    concept,
+                    senderReference: transaction.referencia_interna
+                });
+            }
         }
 
         await insertAlert(client, {
@@ -320,12 +546,12 @@ async function createTransfer(userId, payload) {
             type: "transferencia",
             title: transferMode === "programada" ? "Transferencia programada" : "Transferencia completada",
             message: transferMode === "programada"
-                ? `Se programo un envio de ${amount.toFixed(2)} USD para ${beneficiary.nombre}. Ref: ${transaction.referencia_interna}.`
-                : `Se envio ${amount.toFixed(2)} USD a ${beneficiary.nombre}. Ref: ${transaction.referencia_interna}.`,
+                ? `Se programo un envio de ${amount.toFixed(2)} USD para ${(publicBeneficiary?.nombre || publicBeneficiary?.alias || "el destinatario")}. Ref: ${transaction.referencia_interna}.`
+                : `Se envio ${amount.toFixed(2)} USD a ${(publicBeneficiary?.nombre || publicBeneficiary?.alias || "el destinatario")}. Ref: ${transaction.referencia_interna}.`,
             level: "aceptacion"
         });
 
-        if (beneficiary.favoriteAddedNow) {
+        if (beneficiary?.favoriteAddedNow) {
             await insertAlert(client, {
                 userId,
                 type: "favoritos",

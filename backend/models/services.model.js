@@ -1,3 +1,15 @@
+/**
+ * Modulo: models/services.model.js
+ *
+ * Que hace: logica de negocio del centro de pagos: servicios vinculados, pago de servicios y pago del adelanto
+ *   salarial.
+ * Como lo hace: lecturas con DAOs (cuentas, proveedores, pagos, adelanto activo) y SQL propio; los pagos
+ *   corren en UNA transaccion con la cuenta de cargo bloqueada (FOR UPDATE) para evitar saldos inconsistentes.
+ * Datos que participan: tablas `servicios_usuario`, `proveedores_servicio`, `cuentas`, `transacciones`,
+ *   `movimientos_cuenta`, `adelantos_salariales` y `alertas_usuario`.
+ * Consultas SQL: ver detalle en cada funcion.
+ */
+
 const { query, withTransaction } = require("../db");
 const {
     HttpError,
@@ -12,8 +24,15 @@ const {
     insertAlert
 } = require("./base.model");
 
-// Funcion: mapLinkedService
-// Aqui convierto el servicio vinculado al formato listo para la interfaz.
+/**
+ * Funcion: mapLinkedService
+ *
+ * Que hace: convierte el servicio vinculado al formato listo para la interfaz.
+ * Como lo hace: renombra columnas y expone nombre del proveedor y alias de la cuenta de cargo.
+ * Datos que participan: fila de `servicios_usuario` unida a proveedores_servicio y cuentas.
+ * Consultas SQL: ninguna.
+ * Retorna: objeto servicio vinculado.
+ */
 function mapLinkedService(row) {
     return {
         id: row.id_servicio_usuario,
@@ -28,8 +47,17 @@ function mapLinkedService(row) {
     };
 }
 
-// Funcion: getLinkedServices
-// Aqui traigo los servicios que el usuario ya dejo configurados para pago rapido.
+/**
+ * Funcion: getLinkedServices
+ *
+ * Que hace: trae los servicios que el usuario ya dejo configurados para pago rapido.
+ * Como lo hace: SELECT con dos JOIN, ordenado del mas reciente al mas antiguo, mapeado con mapLinkedService.
+ * Datos que participan: `userId` ($1).
+ * Consultas SQL: SELECT de servicios_usuario (su) JOIN proveedores_servicio (ps) ON ps.id_proveedor =
+ *   su.proveedor_id (nombre y categoria del proveedor) JOIN cuentas (c) ON c.id_cuenta = su.cuenta_cargo_id
+ *   (alias de la cuenta de cargo) WHERE su.usuario_id = $1 ORDER BY su.actualizado_en DESC, su.creado_en DESC.
+ * Retorna: arreglo de servicios vinculados.
+ */
 async function getLinkedServices(userId, executor = { query }) {
     const result = await executor.query(
         `
@@ -57,8 +85,17 @@ async function getLinkedServices(userId, executor = { query }) {
     return result.rows.map(mapLinkedService);
 }
 
-// Funcion: getServicesCenter
-// Aqui preparo proveedores, cuentas, servicios vinculados y el estado del adelanto para el centro de pagos.
+/**
+ * Funcion: getServicesCenter
+ *
+ * Que hace: prepara proveedores, cuentas, servicios vinculados y estado del adelanto para el centro de pagos.
+ * Como lo hace: Promise.all con cinco lecturas; deja solo cuentas activas, oculta suscripciones inactivas y
+ *   marca walletFrozen cuando el adelanto congela operaciones.
+ * Datos que participan: `userId`.
+ * Consultas SQL: getAccounts, getServiceProviderCatalog, getLinkedServices, getPayments (12) y
+ *   getActiveSalaryAdvance.
+ * Retorna: { accounts, providers, linkedServices, scheduledPayments, salaryAdvancePayment, walletFrozen }.
+ */
 async function getServicesCenter(userId) {
     const [accounts, providers, linkedServices, scheduledPayments, currentAdvance] = await Promise.all([
         getAccounts(userId),
@@ -83,9 +120,24 @@ async function getServicesCenter(userId) {
     };
 }
 
-// Funcion: linkService
-// Aqui guardo la relacion entre un proveedor, el contrato del usuario y la cuenta de cargo.
-// Si ya existe, la reactivo o actualizo para no duplicar registros inutilmente.
+/**
+ * Funcion: linkService
+ *
+ * Que hace: guarda la relacion entre un proveedor, el contrato del usuario y la cuenta de cargo.
+ * Como lo hace: en una transaccion valida datos, verifica proveedor activo y cuenta propia activa, y hace un
+ *   UPSERT: si ya existe la reactiva o actualiza para no duplicar registros.
+ * Datos que participan: `userId`, payload { providerId, accountId, customerIdentifier | serviceIdentifier (max
+ *   80), alias (max 90) }.
+ * Consultas SQL:
+ *   1) SELECT id_proveedor, nombre, categoria FROM proveedores_servicio WHERE id_proveedor = $1 AND activo =
+ *      TRUE LIMIT 1.
+ *   2) SELECT id_cuenta, alias_cuenta FROM cuentas WHERE id_cuenta = $1 AND usuario_id = $2 AND estado =
+ *      'activa' LIMIT 1.
+ *   3) INSERT INTO servicios_usuario (...) VALUES (..., TRUE) ON CONFLICT (usuario_id, proveedor_id,
+ *      identificador_cliente) DO UPDATE SET alias_servicio, cuenta_cargo_id, activo = TRUE, actualizado_en = NOW().
+ *   4) insertAlert.
+ * Retorna: { message }.
+ */
 async function linkService(userId, payload) {
     return withTransaction(async (client) => {
         // En esta seccion vinculo un servicio real del usuario
@@ -177,9 +229,25 @@ async function linkService(userId, payload) {
     });
 }
 
-// Funcion: paySalaryAdvanceFromServices
-// Aqui permito pagar el adelanto desde el mismo centro de pagos.
-// Si el adelanto esta vencido, esta es la unica operacion monetaria que dejo pasar hasta normalizar la cuenta.
+/**
+ * Funcion: paySalaryAdvanceFromServices
+ *
+ * Que hace: permite pagar el adelanto salarial desde el mismo centro de pagos; es la unica operacion monetaria
+ *   permitida con la wallet congelada por mora.
+ * Como lo hace: obtiene el adelanto con ensureWalletOperationAllowed({ allowAdvancePayment: true }), valida
+ *   monto, saldo y el pago minimo si esta vencido (la cuota o lo pendiente, lo menor), registra el pago y
+ *   actualiza el estado del adelanto a 'pagado', 'vencido' o 'activo'.
+ * Datos que participan: `userId`, `payload` { amount, concept }, `client` (transaccion en curso), `account`
+ *   (cuenta de cargo ya bloqueada).
+ * Consultas SQL:
+ *   1) INSERT INTO transacciones (tipo 'pago_servicio', estado 'completada', adelanto_id, referencia PAD-...)
+ *      RETURNING id_transaccion, referencia_interna.
+ *   2) UPDATE cuentas SET saldo_disponible, saldo_contable (restan el monto).
+ *   3) UPDATE adelantos_salariales SET estado = $1 WHERE id_adelanto = $2.
+ *   4) INSERT INTO movimientos_cuenta (tipo 'debito').
+ *   5) insertAlert (pago aplicado o adelanto liquidado).
+ * Retorna: { message }. Errores 400/404.
+ */
 async function paySalaryAdvanceFromServices(userId, payload, client, account) {
     const amount = Number(payload.amount);
     const currentAdvance = await ensureWalletOperationAllowed(userId, client, {
@@ -307,9 +375,28 @@ async function paySalaryAdvanceFromServices(userId, payload, client, account) {
     };
 }
 
-// Funcion: payService
-// Aqui ejecuto el pago de un servicio o, si el formulario lo pide, el pago del adelanto salarial.
-// Valido saldo, proveedor y cuenta, luego registro transaccion, movimiento y alerta.
+/**
+ * Funcion: payService
+ *
+ * Que hace: ejecuta el pago de un servicio o, si el formulario lo pide, el pago del adelanto salarial.
+ * Como lo hace: en una transaccion bloquea la cuenta de cargo; si paymentTarget es 'adelanto_salarial' delega
+ *   en paySalaryAdvanceFromServices; si no, verifica que la wallet no este congelada, valida monto y saldo,
+ *   resuelve el proveedor (por servicio vinculado o por proveedor directo con identificador de cliente),
+ *   registra la transaccion, descuenta el saldo, escribe el movimiento y la alerta.
+ * Datos que participan: `userId`, payload { accountId, amount, linkedServiceId, providerId, paymentTarget,
+ *   customerIdentifier | serviceIdentifier, concept }.
+ * Consultas SQL:
+ *   1) SELECT id_cuenta, alias_cuenta, saldo_disponible, saldo_contable FROM cuentas WHERE id_cuenta = $1 AND
+ *      usuario_id = $2 AND estado = 'activa' FOR UPDATE.
+ *   2) SELECT de servicios_usuario JOIN proveedores_servicio WHERE su.id_servicio_usuario = $1 AND su.usuario_id
+ *      = $2 AND su.activo = TRUE, o SELECT de proveedores_servicio por id.
+ *   3) INSERT INTO transacciones (tipo 'pago_servicio', proveedor_servicio_id, referencia SERV-...) RETURNING
+ *      id_transaccion, referencia_interna.
+ *   4) UPDATE cuentas SET saldo_disponible, saldo_contable.
+ *   5) INSERT INTO movimientos_cuenta (tipo 'debito', saldo_resultante).
+ *   6) insertAlert.
+ * Retorna: { message }. Errores 400, 404 y 423 (wallet congelada).
+ */
 async function payService(userId, payload) {
     return withTransaction(async (client) => {
         const amount = Number(payload.amount);

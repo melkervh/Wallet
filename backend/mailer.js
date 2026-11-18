@@ -1,12 +1,33 @@
+/**
+ * Modulo: mailer.js
+ *
+ * Que hace: construye y envia los correos transaccionales (recuperacion de contrasena, activacion de cuenta y
+ *   codigo de adelanto salarial).
+ * Como lo hace: plantillas HTML con estilos inline (para que se vean bien en clientes de correo estrictos) mas
+ *   version en texto plano, enviadas con Nodemailer sobre SMTP. Si SMTP no esta configurado o
+ *   config.mail.previewMode esta activo, no envia: imprime el PIN en consola y lo devuelve en modo 'preview'
+ *   para poder probar el flujo.
+ * Datos que participan: destinatario, nombre, PIN o codigo, URLs de accion y la configuracion config.mail
+ *   (host, puerto, usuario, from, vigencia de los codigos).
+ * Consultas SQL: ninguna.
+ */
+
 const nodemailer = require("nodemailer");
 const { config } = require("./env");
 
 let transporter = null;
 let legacyPasswordWarningShown = false;
 
-// Funcion: buildEmailShell
-// Aqui envuelvo el contenido principal dentro de una plantilla visual mas cuidada.
-// Lo hago con estilos inline para que el correo mantenga forma incluso en clientes estrictos.
+/**
+ * Funcion: buildEmailShell
+ *
+ * Que hace: envuelve el contenido principal dentro de una plantilla visual cuidada.
+ * Como lo hace: arma el HTML con tabla central, titulo, introduccion, insignia, bloques de contenido, boton de
+ *   accion opcional y nota de pie, todo con estilos inline.
+ * Datos que participan: { pretitle, title, intro, badge, bodyBlocks, footerNote, action: { url, label } }.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: string HTML.
+ */
 function buildEmailShell({ pretitle, title, intro, badge, bodyBlocks, footerNote, action }) {
     const blocks = Array.isArray(bodyBlocks) ? bodyBlocks.filter(Boolean) : [];
     const actionHtml = action?.url && action?.label
@@ -73,9 +94,16 @@ function buildEmailShell({ pretitle, title, intro, badge, bodyBlocks, footerNote
     ].join("");
 }
 
-// Funcion: buildPasswordResetMessage
-// Aqui preparo la version texto y HTML del correo de recuperacion.
-// Lo hago separado para reutilizar el contenido sin mezclarlo con el envio.
+/**
+ * Funcion: buildPasswordResetMessage
+ *
+ * Que hace: arma asunto, texto y HTML del correo de recuperacion de contrasena.
+ * Como lo hace: inserta nombre, PIN, vigencia en minutos y boton con el enlace de recuperacion en la
+ *   plantilla.
+ * Datos que participan: { userName, pin, resetUrl, expiresInMinutes }.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { subject, text, html }.
+ */
 function buildPasswordResetMessage({ userName, pin, resetUrl, expiresInMinutes }) {
     const saludo = userName ? `Hola ${userName},` : "Hola,";
     const text = [
@@ -116,10 +144,15 @@ function buildPasswordResetMessage({ userName, pin, resetUrl, expiresInMinutes }
     };
 }
 
-// Funcion: buildRegistrationVerificationMessage
-// Aqui armo el correo que confirma el alta inicial de la cuenta.
-// Incluyo PIN y enlace directo para que la activacion pueda cerrarse
-// tanto desde un modal como desde el boton del correo.
+/**
+ * Funcion: buildRegistrationVerificationMessage
+ *
+ * Que hace: arma asunto, texto y HTML del correo de activacion de cuenta.
+ * Como lo hace: inserta nombre, PIN, vigencia y boton con el enlace de activacion.
+ * Datos que participan: { userName, pin, activationUrl, expiresInMinutes }.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { subject, text, html }.
+ */
 function buildRegistrationVerificationMessage({ userName, pin, activationUrl, expiresInMinutes }) {
     const saludo = userName ? `Hola ${userName},` : "Hola,";
     const text = [
@@ -161,9 +194,15 @@ function buildRegistrationVerificationMessage({ userName, pin, activationUrl, ex
     };
 }
 
-// Funcion: buildSalaryAdvanceCodeMessage
-// Aqui preparo el correo que autoriza un adelanto salarial con un codigo temporal.
-// Lo separo para poder reutilizar el contenido sin mezclar construccion y envio.
+/**
+ * Funcion: buildSalaryAdvanceCodeMessage
+ *
+ * Que hace: arma asunto, texto y HTML del correo con el codigo que autoriza un adelanto salarial.
+ * Como lo hace: inserta nombre, codigo, monto solicitado y vigencia.
+ * Datos que participan: { userName, pin, amount, expiresInMinutes }.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { subject, text, html }.
+ */
 function buildSalaryAdvanceCodeMessage({ userName, pin, amount, expiresInMinutes }) {
     const saludo = userName ? `Hola ${userName},` : "Hola,";
     const montoTexto = Number.isFinite(Number(amount)) ? `${Number(amount).toFixed(2)} USD` : "el adelanto solicitado";
@@ -203,9 +242,17 @@ function buildSalaryAdvanceCodeMessage({ userName, pin, amount, expiresInMinutes
     };
 }
 
-// Funcion: getTransporter
-// Aqui creo y reutilizo una unica instancia de Nodemailer.
-// Asi evito reconstruir el transporte en cada solicitud.
+/**
+ * Funcion: getTransporter
+ *
+ * Que hace: crea y reutiliza una unica instancia de Nodemailer para no reconstruir el transporte en cada
+ *   solicitud.
+ * Como lo hace: devuelve null si el correo no esta habilitado; avisa una sola vez si todavia se usa
+ *   SMTP_PASSWORD (variable antigua) y crea el transporte con host, puerto, secure y credenciales si existen.
+ * Datos que participan: config.mail.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: transporte de Nodemailer o null.
+ */
 async function getTransporter() {
     if (!config.mail.enabled) {
         return null;
@@ -236,9 +283,16 @@ async function getTransporter() {
     return transporter;
 }
 
-// Funcion: sendPasswordResetEmail
-// Aqui intento enviar el PIN de recuperacion por correo real.
-// Si el entorno esta en preview, devuelvo datos simulados para pruebas locales.
+/**
+ * Funcion: sendPasswordResetEmail
+ *
+ * Que hace: envia el PIN de recuperacion por correo real, o simula el envio en modo preview.
+ * Como lo hace: sin SMTP o con previewMode devuelve el PIN y la URL sin enviar; con SMTP intenta sendMail y,
+ *   si falla estando en previewMode, cae a preview con el error; si falla fuera de previewMode relanza el error.
+ * Datos que participan: { to, userName, pin, resetUrl } y config.passwordResetTokenMinutes.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { delivered, preview, messageId | previewPin, previewResetUrl, deliveryError }.
+ */
 async function sendPasswordResetEmail({ to, userName, pin, resetUrl }) {
     const expiresInMinutes = config.passwordResetTokenMinutes;
     const message = buildPasswordResetMessage({
@@ -310,10 +364,15 @@ async function sendPasswordResetEmail({ to, userName, pin, resetUrl }) {
     }
 }
 
-// Funcion: sendRegistrationVerificationEmail
-// Aqui envio el PIN que cierra el ciclo del registro.
-// Si el entorno esta en preview, devuelvo el PIN y la URL para seguir
-// probando el flujo sin depender de un servidor SMTP real.
+/**
+ * Funcion: sendRegistrationVerificationEmail
+ *
+ * Que hace: envia el PIN que cierra el ciclo del registro; en preview devuelve PIN y URL para probar sin SMTP.
+ * Como lo hace: misma logica de envio/preview que sendPasswordResetEmail con la plantilla de activacion.
+ * Datos que participan: { to, userName, pin, activationUrl } y config.registrationVerificationCodeMinutes.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { delivered, preview, messageId | previewPin, previewActivationUrl, deliveryError }.
+ */
 async function sendRegistrationVerificationEmail({ to, userName, pin, activationUrl }) {
     const expiresInMinutes = config.registrationVerificationCodeMinutes;
     const message = buildRegistrationVerificationMessage({
@@ -385,9 +444,16 @@ async function sendRegistrationVerificationEmail({ to, userName, pin, activation
     }
 }
 
-// Funcion: sendSalaryAdvanceCodeEmail
-// Aqui envio el codigo que autoriza un adelanto salarial.
-// Si el correo real no esta configurado, devuelvo un preview para que el flujo siga sirviendo en pruebas.
+/**
+ * Funcion: sendSalaryAdvanceCodeEmail
+ *
+ * Que hace: envia el codigo que autoriza un adelanto salarial; si no hay correo real devuelve un preview para
+ *   que el flujo siga sirviendo en pruebas.
+ * Como lo hace: misma logica de envio/preview con la plantilla del adelanto.
+ * Datos que participan: { to, userName, pin, amount } y config.advanceVerificationCodeMinutes.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { delivered, preview, messageId | previewPin, deliveryError }.
+ */
 async function sendSalaryAdvanceCodeEmail({ to, userName, pin, amount }) {
     const expiresInMinutes = config.advanceVerificationCodeMinutes;
     const message = buildSalaryAdvanceCodeMessage({
@@ -456,7 +522,103 @@ async function sendSalaryAdvanceCodeEmail({ to, userName, pin, amount }) {
     }
 }
 
+/**
+ * Funcion: buildTwoFactorMessage
+ *
+ * Que hace: arma asunto, texto y HTML del correo con el codigo del segundo paso de inicio de sesion.
+ * Como lo hace: inserta nombre, codigo y vigencia en la plantilla comun (buildEmailShell) y advierte que, si la
+ *               persona no intento entrar, debe cambiar su contrasena.
+ * Datos que participan: { userName, pin, expiresInMinutes }.
+ * Consultas SQL: ninguna.
+ * Retorna: { subject, text, html }.
+ */
+function buildTwoFactorMessage({ userName, pin, expiresInMinutes }) {
+    const saludo = userName ? `Hola ${userName},` : "Hola,";
+    const text = [
+        saludo,
+        "",
+        "Alguien acaba de introducir tu correo y contrasena en Wallet Digital.",
+        `Tu codigo de verificacion es: ${pin}`,
+        `Este codigo vence en ${expiresInMinutes} minutos y solo sirve una vez.`,
+        "",
+        "Si no fuiste tu, cambia tu contrasena de inmediato y no compartas este codigo."
+    ].join("\n");
+
+    const html = buildEmailShell({
+        pretitle: "Verificacion en dos pasos",
+        title: "Confirma que eres tu",
+        intro: "Tu contrasena fue correcta. Para terminar de iniciar sesion, ingresa este codigo en la pantalla de acceso.",
+        badge: [
+            '<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#765cff; margin-bottom:8px; font-weight:700;">Codigo de verificacion</div>',
+            `<div style="font-size:34px; line-height:1; font-weight:800; letter-spacing:0.14em; color:#1d1830;">${pin}</div>`,
+            `<div style="margin-top:10px; font-size:13px; color:#766b98;">Vence en ${expiresInMinutes} minutos</div>`
+        ].join(""),
+        bodyBlocks: [
+            `<strong style="display:block; color:#1d1830;">${saludo}</strong>`,
+            "Si no intentaste iniciar sesion, alguien conoce tu contrasena: cambiala cuanto antes."
+        ],
+        footerNote: "Nunca compartas este codigo. Wallet Digital no te lo pedira por telefono ni por mensaje."
+    });
+
+    return {
+        subject: "Tu codigo de verificacion | Wallet Digital",
+        text,
+        html
+    };
+}
+
+/**
+ * Funcion: sendTwoFactorCodeEmail
+ *
+ * Que hace: envia por correo el codigo del segundo paso de inicio de sesion, o simula el envio en modo preview.
+ * Como lo hace: sin SMTP o con previewMode devuelve el codigo sin enviar; con SMTP intenta sendMail y, si
+ *               falla estando en previewMode, cae a preview con el error; fuera de previewMode relanza el
+ *               error (el login falla y no se entrega ningun token, nunca se salta el segundo paso).
+ * Datos que participan: { to, userName, pin } y config.twoFactorCodeMinutes.
+ * Consultas SQL: ninguna.
+ * Retorna: { delivered, preview, messageId | previewPin, deliveryError }.
+ */
+async function sendTwoFactorCodeEmail({ to, userName, pin }) {
+    const message = buildTwoFactorMessage({
+        userName,
+        pin,
+        expiresInMinutes: config.twoFactorCodeMinutes
+    });
+
+    if (!config.mail.enabled || config.mail.previewMode) {
+        console.log("[wallet-mail-preview] Codigo de verificacion en dos pasos");
+        console.log(`Para: ${to}`);
+        console.log(`Codigo: ${pin}`);
+        return {
+            delivered: false,
+            preview: true,
+            previewPin: pin
+        };
+    }
+
+    try {
+        const activeTransporter = await getTransporter();
+        const info = await activeTransporter.sendMail({
+            from: config.mail.from,
+            to,
+            subject: message.subject,
+            text: message.text,
+            html: message.html
+        });
+
+        return {
+            delivered: true,
+            preview: false,
+            messageId: info.messageId
+        };
+    } catch (error) {
+        console.warn("No se pudo enviar el correo del segundo paso:", error.message);
+        throw error;
+    }
+}
+
 module.exports = {
+    sendTwoFactorCodeEmail,
     sendRegistrationVerificationEmail,
     sendPasswordResetEmail,
     sendSalaryAdvanceCodeEmail

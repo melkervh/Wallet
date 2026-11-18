@@ -1,3 +1,13 @@
+/**
+ * Modulo: models/cards.model.js
+ *
+ * Que hace: logica de negocio de tarjetas vinculadas (consulta y alta).
+ * Como lo hace: lecturas via DAOs (cuentas, bancos, tarjetas) y alta con validaciones y SQL propio en
+ *   transaccion.
+ * Datos que participan: tablas `tarjetas`, `cuentas`, `catalogo_bancos` y alertas del usuario.
+ * Consultas SQL: ver detalle en cada funcion.
+ */
+
 const { withTransaction } = require("../db");
 const {
     HttpError,
@@ -8,9 +18,16 @@ const {
     insertAlert
 } = require("./base.model");
 
-// Funcion: getCardsCenter
-// Aqui preparo todo lo que necesita la seccion de tarjetas:
-// cuentas activas, bancos disponibles y tarjetas ya vinculadas.
+/**
+ * Funcion: getCardsCenter
+ *
+ * Que hace: prepara todo lo que necesita la seccion de tarjetas.
+ * Como lo hace: en paralelo trae cuentas, catalogo de bancos y tarjetas; luego deja solo las cuentas
+ * con estado "activa" porque solo a esas se puede vincular una tarjeta.
+ * Datos que participan: `userId`.
+ * Consultas SQL: getAccounts, getBankCatalog y getCards (ver account.dao y catalog.dao).
+ * Retorna: { accounts, banks, cards }.
+ */
 async function getCardsCenter(userId) {
     const [accounts, banks, cards] = await Promise.all([
         getAccounts(userId),
@@ -25,9 +42,31 @@ async function getCardsCenter(userId) {
     };
 }
 
-// Funcion: linkCard
-// Aqui vinculo una tarjeta externa a una wallet valida del usuario.
-// Primero valido datos sensibles y luego guardo la tarjeta dejando trazabilidad con alerta.
+/**
+ * Funcion: linkCard
+ *
+ * Que hace: vincula una tarjeta externa a una wallet valida del usuario y deja alerta de trazabilidad.
+ * Como lo hace: en UNA transaccion: normaliza y valida los datos, verifica que la cuenta sea del
+ * usuario y este activa, verifica el banco, opcionalmente quita la marca de predeterminada a las
+ * demas tarjetas de la cuenta, inserta la tarjeta y registra la alerta.
+ * Datos que participan: `userId`, payload { accountId, bankId, last4, cardType|type, holderName,
+ * brand, alias, dailyLimit, expiryMonth, expiryYear, makeDefault }. Solo se guardan los ultimos 4 digitos.
+ * Consultas SQL:
+ *
+ *   1) SELECT id_cuenta, alias_cuenta, estado FROM cuentas WHERE id_cuenta = $1 AND usuario_id = $2:
+ *      comprueba que la cuenta exista y pertenezca al usuario.
+ *
+ *   2) SELECT id_banco, nombre FROM catalogo_bancos WHERE id_banco = $1 AND activo = TRUE: banco disponible.
+ *
+ *   3) UPDATE tarjetas SET es_predeterminada = FALSE WHERE cuenta_id = $1 (solo si makeDefault).
+ *
+ *   4) INSERT INTO tarjetas (...) VALUES (..., 'activa', ...) RETURNING id_tarjeta.
+ *
+ *   5) insertAlert(...): alerta "Tarjeta vinculada".
+ * Validaciones: cuenta y banco obligatorios, 4 digitos, mes 1-12, anio no pasado, tipo
+ * debito/credito/prepago, titular y marca obligatorios.
+ * Retorna: { message, cardId }. Lanza HttpError 400/404.
+ */
 async function linkCard(userId, payload) {
     return withTransaction(async (client) => {
         // Aqui valido primero la cuenta y el banco porque una tarjeta

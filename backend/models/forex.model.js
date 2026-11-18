@@ -1,3 +1,15 @@
+/**
+ * Modulo: models/forex.model.js
+ *
+ * Que hace: contenido educativo de Forex y simulador de escenarios, apoyados en datos reales de mercado.
+ * Como lo hace: mezcla un plan de estudio fijo (builtInCurriculum) con el historial de 90 dias del Banco
+ *   Central Europeo (BCE, XML publico). Si el BCE no responde usa una serie de respaldo para que la seccion siga
+ *   funcionando.
+ * Datos que participan: par de divisas (EURUSD, GBPUSD, EURGBP, USDJPY), tasas del BCE (EUR como pivote),
+ *   capital, porcentaje de riesgo y direccion (buy/sell) del simulador.
+ * Consultas SQL: ninguna; este modulo no usa la base de datos.
+ */
+
 const { HttpError } = require("./base.model");
 
 const ECB_HISTORY_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml";
@@ -386,8 +398,16 @@ const builtInCurriculum = [
     }
 ];
 
-// Funcion: parseEcbHistory
-// Aqui transformo el XML historico del BCE a una estructura simple por fecha y tasas.
+/**
+ * Funcion: parseEcbHistory
+ *
+ * Que hace: transforma el XML historico del BCE a una estructura simple por fecha y tasas.
+ * Como lo hace: con expresiones regulares busca cada nodo <Cube time=...> y dentro de el cada <Cube
+ *   currency=... rate=.../>, y arma { date, rates: { USD: 1.08, ... } }.
+ * Datos que participan: `xml` (texto devuelto por el BCE).
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: arreglo de { date, rates }.
+ */
 function parseEcbHistory(xml) {
     const dayMatches = [...String(xml || "").matchAll(/<Cube time=['"]([^'"]+)['"]>([\s\S]*?)<\/Cube>/g)];
     return dayMatches.map((match) => {
@@ -400,9 +420,16 @@ function parseEcbHistory(xml) {
     });
 }
 
-// Funcion: calculatePairPrice
-// Aqui calculo el precio de un par a partir de las tasas base del BCE.
-// Resuelvo pares directos e indirectos usando EUR como pivote cuando hace falta.
+/**
+ * Funcion: calculatePairPrice
+ *
+ * Que hace: calcula el precio de un par a partir de las tasas base del BCE.
+ * Como lo hace: el BCE cotiza todo contra EUR, asi que usa EUR como pivote: EUR/XXX es la tasa directa,
+ *   XXX/EUR es 1/tasa, y cualquier otro cruce se calcula como tasa(cotizada) / tasa(base).
+ * Datos que participan: `rates` (objeto de tasas del dia), `pair` (ej. 'EUR/USD' o 'EURUSD').
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: number o null si el par no se puede resolver.
+ */
 function calculatePairPrice(rates, pair) {
     const normalizedPair = String(pair || "").toUpperCase().replace("/", "");
     const base = normalizedPair.slice(0, 3);
@@ -423,8 +450,15 @@ function calculatePairPrice(rates, pair) {
     return null;
 }
 
-// Funcion: buildSeriesFromHistory
-// Aqui convierto el historial crudo en una serie limpia de fecha y precio para un par especifico.
+/**
+ * Funcion: buildSeriesFromHistory
+ *
+ * Que hace: convierte el historial crudo en una serie limpia de fecha y precio para un par especifico.
+ * Como lo hace: aplica calculatePairPrice a cada dia, redondea a 5 decimales y descarta los dias sin precio.
+ * Datos que participan: `history` (resultado de parseEcbHistory), `pair`.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: arreglo de { date, price }.
+ */
 function buildSeriesFromHistory(history, pair) {
     return history
         .map((entry) => {
@@ -434,9 +468,16 @@ function buildSeriesFromHistory(history, pair) {
         .filter(Boolean);
 }
 
-// Funcion: buildFallbackSeries
-// Aqui preparo una serie de respaldo para no dejar vacia la experiencia
-// si el proveedor externo no responde o trae pocos datos.
+/**
+ * Funcion: buildFallbackSeries
+ *
+ * Que hace: prepara una serie de respaldo para no dejar vacia la experiencia si el proveedor externo falla o
+ *   trae pocos datos.
+ * Como lo hace: toma 7 precios de referencia por par y les asigna fechas consecutivas terminando hoy.
+ * Datos que participan: `pair`.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: arreglo de { date, price }.
+ */
 function buildFallbackSeries(pair) {
     const seed = {
         EURUSD: [1.082, 1.081, 1.084, 1.086, 1.089, 1.091, 1.093],
@@ -458,9 +499,17 @@ function buildFallbackSeries(pair) {
     }));
 }
 
-// Funcion: fetchForexSeries
-// Aqui intento obtener mercado real desde el BCE y, si falla, regreso una serie fallback.
-// La idea es mantener util la seccion aunque haya problemas de red o del proveedor.
+/**
+ * Funcion: fetchForexSeries
+ *
+ * Que hace: obtiene mercado real desde el BCE y, si falla, regresa una serie de respaldo.
+ * Como lo hace: descarga el XML con fetch, lo parsea y construye la serie; si hay al menos 5 puntos devuelve
+ *   los ultimos 30 con source 'ecb'. Ante cualquier error de red o datos insuficientes devuelve source
+ *   'fallback'.
+ * Datos que participan: `pair`, URL ECB_HISTORY_URL.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { source: 'ecb' | 'fallback', pair, series }.
+ */
 async function fetchForexSeries(pair) {
     try {
         const response = await fetch(ECB_HISTORY_URL);
@@ -491,9 +540,17 @@ async function fetchForexSeries(pair) {
     };
 }
 
-// Funcion: summarizeSeries
-// Aqui saco un resumen estadistico corto del tramo analizado:
-// ultimo precio, variacion, extremos, rango y sesgo general.
+/**
+ * Funcion: summarizeSeries
+ *
+ * Que hace: saca un resumen estadistico corto del tramo analizado.
+ * Como lo hace: calcula ultimo precio, maximo, minimo, promedio, variacion porcentual entre el primer y el
+ *   ultimo punto, rango porcentual respecto al promedio, sesgo (alcista si la variacion es >=
+ *   0) y etiqueta de volatilidad (alta >= 2%, media >= 1%, baja).
+ * Datos que participan: `series` (arreglo de { date, price }).
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: objeto resumen.
+ */
 function summarizeSeries(series) {
     const prices = series.map((entry) => Number(entry.price || 0)).filter(Boolean);
     const first = series[0];
@@ -523,8 +580,16 @@ function summarizeSeries(series) {
     };
 }
 
-// Funcion: buildMarketInsights
-// Aqui convierto el resumen numerico en mensajes y tarjetas mas legibles para el usuario.
+/**
+ * Funcion: buildMarketInsights
+ *
+ * Que hace: convierte el resumen numerico en mensajes y tarjetas mas legibles para el usuario.
+ * Como lo hace: arma tres tarjetas de contexto (sesgo, volatilidad, zona alta/baja) y cuatro notas que
+ *   combinan una pista de sesion por par, el promedio y recomendaciones segun volatilidad y sesgo.
+ * Datos que participan: `pair`, `summary` (de summarizeSeries).
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { contextCards, notes }.
+ */
 function buildMarketInsights(pair, summary) {
     const sessionHint = {
         EURUSD: "Suele reaccionar mejor cuando Europa y Nueva York coinciden.",
@@ -568,8 +633,15 @@ function buildMarketInsights(pair, summary) {
     };
 }
 
-// Funcion: getForexLearningContent
-// Aqui uno el plan de estudio fijo con el estado actual del mercado para el par elegido.
+/**
+ * Funcion: getForexLearningContent
+ *
+ * Que hace: une el plan de estudio fijo con el estado actual del mercado para el par elegido.
+ * Como lo hace: normaliza el par (mayusculas, sin '/'), obtiene la serie, el resumen y los insights.
+ * Datos que participan: `pair` (por defecto EURUSD).
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: { pair, curriculum, market: { source, pair, summary, series, insights } }.
+ */
 async function getForexLearningContent(pair = "EURUSD") {
     const normalizedPair = String(pair || "EURUSD").toUpperCase().replace("/", "");
     const market = await fetchForexSeries(normalizedPair);
@@ -589,9 +661,17 @@ async function getForexLearningContent(pair = "EURUSD") {
     };
 }
 
-// Funcion: buildCapitalPath
-// Aqui simulo una curva de capital sencilla para que el usuario vea
-// una secuencia de presion, reaccion y cierre en vez de solo un numero final.
+/**
+ * Funcion: buildCapitalPath
+ *
+ * Que hace: simula una curva de capital sencilla para que el usuario vea una secuencia de presion, reaccion y
+ *   cierre y no solo un numero final.
+ * Como lo hace: calcula cinco puntos: inicio, presion inicial (capital - 35% del riesgo), reaccion (45% de la
+ *   ganancia/perdida estimada), confirmacion (78%) y cierre (100%).
+ * Datos que participan: `capital`, `estimatedProfitLoss`, `riskCapital`.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: arreglo de { etapa, capital }.
+ */
 function buildCapitalPath(capital, estimatedProfitLoss, riskCapital) {
     const firstDip = Number((capital - (riskCapital * 0.35)).toFixed(2));
     const recovery = Number((capital + (estimatedProfitLoss * 0.45)).toFixed(2));
@@ -607,9 +687,20 @@ function buildCapitalPath(capital, estimatedProfitLoss, riskCapital) {
     ];
 }
 
-// Funcion: simulateForexScenario
-// Aqui calculo un escenario de simulacion apoyandome en el mercado reciente,
-// el capital, el riesgo y la direccion elegida para devolver una lectura mas completa.
+/**
+ * Funcion: simulateForexScenario
+ *
+ * Que hace: calcula un escenario de simulacion con el mercado reciente, el capital, el riesgo y la direccion
+ *   elegida. Es educativo: no mueve dinero ni toca la wallet.
+ * Como lo hace: valida capital > 0, riesgo entre 0 y 100 y direccion buy/sell; toma el penultimo y el ultimo
+ *   precio de la serie, calcula el movimiento porcentual (invertido si es venta), el capital en riesgo, la
+ *   relacion riesgo/beneficio (1.5 con volatilidad alta, 1.8 en otro caso), la ganancia o perdida estimada,
+ *   distancias de stop y objetivo, una confianza acotada entre 35 y 82 y la curva de capital.
+ * Datos que participan: `payload` { pair, direction, capital, riskPercent }.
+ * Consultas SQL: ninguna (no usa base de datos).
+ * Retorna: objeto con precios de entrada y actual, capital, riesgo, ganancia/perdida estimada, stop, objetivo,
+ *   confianza y curva. Lanza HttpError 400 si hay datos invalidos.
+ */
 async function simulateForexScenario(payload) {
     const pair = String(payload.pair || "EURUSD").toUpperCase().replace("/", "");
     const direction = String(payload.direction || "buy").toLowerCase();

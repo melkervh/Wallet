@@ -1,9 +1,28 @@
+/**
+ * Modulo: env.js
+ *
+ * Que hace: carga y normaliza la configuracion de la aplicacion.
+ * Como lo hace: lee .env manualmente, lo mezcla con process.env (el archivo tiene prioridad) y arma el objeto
+ *   `config`.
+ * Datos que participan: PORT, APP_SECRET, TOKEN_DURATION_HOURS, APP_BASE_URL, tiempos de PIN/tokens,
+ *   HTTP_MAX_BODY_BYTES,
+ * SMTP_* (correo), WHATSAPP_* (mensajeria) y variables PG y DATABASE_URL (base de datos).
+ * Consultas SQL: ninguna.
+ */
+
 const fs = require("fs");
 const path = require("path");
 
-// Funcion: parseBoolean
-// Aqui convierto valores de entorno a booleanos reales.
-// Lo hago porque en .env todo llega como texto y necesito un criterio unico.
+/**
+ * Funcion: parseBoolean
+ *
+ * Que hace: convierte valores de entorno a booleanos reales.
+ * Como lo hace: en .env todo llega como texto; devuelve el valor por defecto si esta vacio y true solo para
+ *   "true", "1" o "yes".
+ * Datos que participan: `value`, `defaultValue`.
+ * Consultas SQL: ninguna.
+ * Retorna: boolean.
+ */
 function parseBoolean(value, defaultValue) {
     if (value === undefined || value === null || value === "") {
         return defaultValue;
@@ -13,9 +32,16 @@ function parseBoolean(value, defaultValue) {
     return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
-// Funcion: loadEnvFile
-// Aqui leo manualmente el archivo .env y lo convierto en un objeto simple.
-// Lo hago asi para no depender de otra libreria solo para esta carga basica.
+/**
+ * Funcion: loadEnvFile
+ *
+ * Que hace: lee manualmente el archivo .env y lo convierte en un objeto simple, sin depender de otra libreria.
+ * Como lo hace: busca .env en process.cwd(); recorre cada linea ignorando vacias y comentarios (#), separa en
+ *   el primer "=" y quita comillas dobles envolventes.
+ * Datos que participan: archivo .env.
+ * Consultas SQL: ninguna.
+ * Retorna: objeto { CLAVE: valor }, o {} si no existe el archivo.
+ */
 function loadEnvFile() {
     const envPath = path.join(process.cwd(), ".env");
     if (!fs.existsSync(envPath)) {
@@ -72,6 +98,7 @@ const config = {
     port,
     appSecret: mergedEnv.APP_SECRET || "wallet-secret-dev",
     tokenDurationHours: Number(mergedEnv.TOKEN_DURATION_HOURS || 12),
+    twoFactorCodeMinutes: Number(mergedEnv.TWO_FACTOR_CODE_MINUTES || 10),
     appBaseUrl: mergedEnv.APP_BASE_URL || `http://localhost:${port}`,
     registrationVerificationCodeMinutes: Number(mergedEnv.REGISTRATION_VERIFICATION_CODE_MINUTES || 15),
     passwordResetTokenMinutes: Number(mergedEnv.PASSWORD_RESET_TOKEN_MINUTES || 30),

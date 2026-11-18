@@ -1,3 +1,22 @@
+/**
+ * Modulo: scripts/verificar_flujos_integrales.js
+ *
+ * ADVERTENCIA: este script BORRA TODOS LOS DATOS de las tablas operativas (usuarios, cuentas,
+ *   transacciones...) de la base configurada en .env, antes y despues de la prueba. Nunca lo ejecutes contra una
+ *   base con datos reales.
+ *
+ * Que hace: prueba de integracion de extremo a extremo contra la API local: registro, activacion, login,
+ *   perfil, cuentas, tarjetas, favoritos, transferencias, ahorros, servicios, adelanto salarial y recuperacion
+ *   de contrasena.
+ * Como lo hace: espera a que /api/health responda, limpia la base, ejecuta cada flujo por HTTP con un cliente
+ *   que maneja el token, valida respuestas con assert, fuerza PINes y codigos conocidos directamente en la base
+ *   (para no depender del correo) y al final vuelve a dejar las tablas en cero y lo comprueba.
+ * Datos que participan: usuario de prueba (correo, telefono y DUI de las constantes del archivo), la API en
+ *   http://127.0.0.1:{PORT} y las tablas listadas en CLEANUP_TABLES.
+ * Consultas SQL: DELETE y COUNT sobre cada tabla de CLEANUP_TABLES, y UPDATE/SELECT puntuales de codigos y
+ *   usuarios (ver cada funcion). El servidor debe estar encendido (npm start).
+ */
+
 const assert = require("assert");
 const { query } = require("../backend/db");
 const { config } = require("../backend/env");
@@ -33,9 +52,17 @@ const CLEANUP_TABLES = [
     "usuarios"
 ];
 
-// Funcion: createApiClient
-// Aqui centralizo las llamadas HTTP para que todos los flujos usen
-// el mismo manejo de token, JSON y errores de respuesta.
+/**
+ * Funcion: createApiClient
+ *
+ * Que hace: centraliza las llamadas HTTP para que todos los flujos usen el mismo manejo de token, JSON y
+ *   errores.
+ * Como lo hace: devuelve un objeto con setToken (cambia el Bearer activo) y request (envia la solicitud JSON,
+ *   compara el status con el esperado y lanza un error con el detalle del backend si no coincide).
+ * Datos que participan: token en memoria, API_BASE_URL.
+ * Consultas SQL: ninguna.
+ * Retorna: cliente { setToken, request }.
+ */
 function createApiClient() {
     const state = {
         token: ""
@@ -89,9 +116,15 @@ function createApiClient() {
     };
 }
 
-// Funcion: waitForHealth
-// Aqui espero a que la API local responda antes de disparar CRUDs.
-// Esto evita que la prueba arranque cuando el server aun esta levantando.
+/**
+ * Funcion: waitForHealth
+ *
+ * Que hace: espera a que la API local este lista.
+ * Como lo hace: consulta /api/health hasta 20 veces con pausas de 500 ms, ignorando el ruido del arranque.
+ * Datos que participan: `maxAttempts`.
+ * Consultas SQL: ninguna directa (el endpoint ejecuta SELECT 1).
+ * Retorna: Promise<void>; lanza error si nunca responde.
+ */
 async function waitForHealth(maxAttempts = 20) {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
@@ -109,19 +142,33 @@ async function waitForHealth(maxAttempts = 20) {
     throw new Error("La API local no respondio en /api/health dentro del tiempo esperado.");
 }
 
-// Funcion: cleanupDatabase
-// Aqui dejo la base operativa en cero eliminando filas tabla por tabla.
-// Uso DELETE en lugar de TRUNCATE porque el usuario actual de la app
-// no siempre es duenio de todas las tablas en PostgreSQL local.
+/**
+ * Funcion: cleanupDatabase
+ *
+ * Que hace: deja la base operativa en cero.
+ * Como lo hace: DELETE FROM de cada tabla en el orden de CLEANUP_TABLES (hijas antes que padres para respetar
+ *   las claves foraneas). Usa DELETE y no TRUNCATE porque el usuario de la app no siempre es duenio de todas las
+ *   tablas.
+ * Datos que participan: CLEANUP_TABLES.
+ * Consultas SQL: DELETE FROM {tabla} por cada tabla.
+ * Retorna: Promise<void>.
+ */
 async function cleanupDatabase() {
     for (const tableName of CLEANUP_TABLES) {
         await query(`DELETE FROM ${tableName}`);
     }
 }
 
-// Funcion: getOperationalCounts
-// Aqui leo cuantos registros quedan en cada tabla operativa para
-// demostrar el antes, el despues y el estado final limpio.
+/**
+ * Funcion: getOperationalCounts
+ *
+ * Que hace: lee cuantos registros hay en cada tabla operativa, para demostrar el antes, el despues y el estado
+ *   final limpio.
+ * Como lo hace: recorre CLEANUP_TABLES con un COUNT por tabla.
+ * Datos que participan: CLEANUP_TABLES.
+ * Consultas SQL: SELECT COUNT(*) AS total FROM {tabla}.
+ * Retorna: objeto { tabla: total }.
+ */
 async function getOperationalCounts() {
     const counts = {};
 
@@ -133,9 +180,16 @@ async function getOperationalCounts() {
     return counts;
 }
 
-// Funcion: getLatestUserIdByEmail
-// Aqui encuentro el usuario de prueba que acaba de registrarse para poder
-// ajustar codigos temporales desde SQL sin depender del correo recibido.
+/**
+ * Funcion: getLatestUserIdByEmail
+ *
+ * Que hace: obtiene el id del usuario de prueba a partir de su correo.
+ * Como lo hace: busca ignorando mayusculas y toma el mas reciente.
+ * Datos que participan: `email`.
+ * Consultas SQL: SELECT id_usuario FROM usuarios WHERE LOWER(correo) = LOWER($1) ORDER BY id_usuario DESC
+ *   LIMIT 1.
+ * Retorna: number; lanza error si no existe.
+ */
 async function getLatestUserIdByEmail(email) {
     const result = await query(
         `
@@ -156,9 +210,20 @@ async function getLatestUserIdByEmail(email) {
     return userId;
 }
 
-// Funcion: forceLatestAdvanceCode
-// Aqui reemplazo el hash del ultimo codigo de adelanto por un valor conocido.
-// Lo hago para validar el flujo completo sin depender de abrir el correo manualmente.
+/**
+ * Funcion: forceLatestAdvanceCode
+ *
+ * Que hace: reemplaza el hash del ultimo codigo de adelanto por un valor conocido, para validar el flujo sin
+ *   abrir el correo.
+ * Como lo hace: un UPDATE sobre el codigo mas reciente (CTE latest_code) que fija el hash del codigo de
+ *   prueba, lo vuelve a poner vigente 15 minutos y lo marca como no usado.
+ * Datos que participan: `userId`, `plainCode`.
+ * Consultas SQL: WITH latest_code AS (SELECT id_codigo FROM codigos_verificacion WHERE usuario_id = $1 ORDER
+ *   BY creado_en DESC LIMIT
+ *   1) UPDATE codigos_verificacion SET codigo_hash = $2, expira_en = NOW() + 15 min, usado_en = NULL WHERE
+ *      id_codigo IN (SELECT ...) RETURNING id_codigo.
+ * Retorna: Promise<void>; lanza error si no habia codigo.
+ */
 async function forceLatestAdvanceCode(userId, plainCode) {
     const result = await query(
         `
@@ -185,9 +250,19 @@ async function forceLatestAdvanceCode(userId, plainCode) {
     }
 }
 
-// Funcion: forceLatestRecoveryPin
-// Aqui hago lo mismo con el PIN de recuperacion para poder probar
-// verify y confirm sin depender del cliente de correo.
+/**
+ * Funcion: forceLatestRecoveryPin
+ *
+ * Que hace: hace lo mismo con el PIN de recuperacion para probar verify y confirm sin depender del correo.
+ * Como lo hace: UPDATE del token mas reciente con el hash del PIN de prueba, 15 minutos de vigencia y usado_en
+ *   = NULL.
+ * Datos que participan: `userId`, `plainPin`.
+ * Consultas SQL: WITH latest_pin AS (SELECT id_token FROM tokens_recuperacion_password WHERE usuario_id = $1
+ *   ORDER BY creado_en DESC LIMIT
+ *   1) UPDATE tokens_recuperacion_password SET token_hash = $2, expira_en = NOW() + 15 min, usado_en = NULL ...
+ *      RETURNING id_token.
+ * Retorna: Promise<void>; lanza error si no habia token.
+ */
 async function forceLatestRecoveryPin(userId, plainPin) {
     const result = await query(
         `
@@ -214,9 +289,19 @@ async function forceLatestRecoveryPin(userId, plainPin) {
     }
 }
 
-// Funcion: forceLatestRegistrationPin
-// Aqui fuerzo el ultimo PIN de activacion de registro para no depender
-// del correo durante la prueba automatica.
+/**
+ * Funcion: forceLatestRegistrationPin
+ *
+ * Que hace: fuerza el ultimo PIN de activacion de registro para no depender del correo en la prueba
+ *   automatica.
+ * Como lo hace: igual que el de adelanto pero eligiendo solo entre codigos aun no usados (usado_en IS NULL).
+ * Datos que participan: `userId`, `plainPin`.
+ * Consultas SQL: WITH latest_pin AS (SELECT id_codigo FROM codigos_verificacion WHERE usuario_id = $1 AND
+ *   usado_en IS NULL ORDER BY creado_en DESC LIMIT
+ *   1) UPDATE codigos_verificacion SET codigo_hash = $2, expira_en = NOW() + 15 min, usado_en = NULL ...
+ *      RETURNING id_codigo.
+ * Retorna: Promise<void>; lanza error si no habia codigo.
+ */
 async function forceLatestRegistrationPin(userId, plainPin) {
     const result = await query(
         `
@@ -244,8 +329,15 @@ async function forceLatestRegistrationPin(userId, plainPin) {
     }
 }
 
-// Funcion: ensureZeroedCounts
-// Aqui valido que el cierre haya dejado todas las tablas operativas en cero.
+/**
+ * Funcion: ensureZeroedCounts
+ *
+ * Que hace: valida que el cierre haya dejado todas las tablas operativas en cero.
+ * Como lo hace: obtiene los conteos y lanza error listando las tablas con datos si alguna no esta vacia.
+ * Datos que participan: conteos de getOperationalCounts.
+ * Consultas SQL: SELECT COUNT(*) por tabla (via getOperationalCounts).
+ * Retorna: objeto de conteos (todos en 0).
+ */
 async function ensureZeroedCounts() {
     const counts = await getOperationalCounts();
     const dirtyEntries = Object.entries(counts).filter(([, total]) => total !== 0);
@@ -258,17 +350,32 @@ async function ensureZeroedCounts() {
     return counts;
 }
 
-// Funcion: assertHasMessage
-// Aqui confirmo que una respuesta de negocio traiga mensaje, porque
-// eso nos ayuda a detectar respuestas incompletas aunque el status sea 200/201.
+/**
+ * Funcion: assertHasMessage
+ *
+ * Que hace: confirma que una respuesta de negocio traiga mensaje, para detectar respuestas incompletas aunque
+ *   el status sea 200/201.
+ * Como lo hace: assert.ok sobre response.message (string no vacio).
+ * Datos que participan: `response`, `context`.
+ * Consultas SQL: ninguna.
+ * Retorna: nada; lanza AssertionError.
+ */
 function assertHasMessage(response, context) {
     assert.ok(response && typeof response.message === "string" && response.message.trim(), `${context} debia devolver message.`);
 }
 
-// Funcion: main
-// Aqui ejecuto la bateria completa:
-// limpio base, inserto datos en los modulos clave, pruebo validaciones,
-// corro recuperacion y al final vuelvo a dejar todo en cero.
+/**
+ * Funcion: main
+ *
+ * Que hace: ejecuta la bateria completa.
+ * Como lo hace: limpia la base, recorre los flujos de cada modulo con sus validaciones (incluido rechazo de
+ *   una transferencia mayor al saldo), corre la recuperacion de contrasena y, en el bloque finally, vuelve a
+ *   dejar todo en cero y comprueba el resultado. Imprime un resumen JSON con los conteos antes, durante y
+ *   despues.
+ * Datos que participan: usuario y datos de prueba, API local.
+ * Consultas SQL: las de las funciones auxiliares y las que ejecuta el backend en cada endpoint.
+ * Retorna: Promise<void>; ante un error imprime el mensaje y termina con codigo 1.
+ */
 async function main() {
     const api = createApiClient();
     const summary = {

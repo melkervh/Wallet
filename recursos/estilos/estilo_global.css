@@ -1,3 +1,29 @@
+/* ==========================================================================
+ * ARCHIVO: recursos/estilos/estilo_global.css
+ *
+ * Que hace: hoja de estilos unica de Wallet Digital; la usan las 9 vistas de /views.
+ * Como lo hace: se apoya en variables CSS (custom properties) definidas en :root para el tema
+ *               claro y redefinidas en :root[data-theme="dark"] para el oscuro. funcionalidad_global.js
+ *               solo cambia el atributo data-theme de <html>; ningun componente cambia de reglas, solo de
+ *               valores. Los nombres de clase usan snake_case en espanol (algunos con guion por historia).
+ * Orden del archivo: variables -> reset y fondo -> layout -> barra superior -> alertas y usuario ->
+ *               tipografia y tarjetas -> login -> panel principal -> perfil -> formularios y botones ->
+ *               movimientos -> desplegables -> Forex -> modales -> modo responsivo (al final).
+ * Responsivo: dos puntos de corte, max-width 980px (tablet) y max-width 760px (movil); ver las dos
+ *               secciones finales. Todas las vistas incluyen <meta name="viewport" content="width=device-width,
+ *               initial-scale=1.0">, requisito para que estos cortes funcionen en telefonos.
+ * Datos que participan: ninguno del servidor; es CSS estatico.
+ * ========================================================================== */
+
+/* --- VARIABLES DEL TEMA CLARO -------------------------------------------
+ * Que hace: define la paleta y medidas base.
+ * Grupos: --color_* (marca, texto, bordes, estados exito/error/advertencia, colores de graficos),
+ *         --sombra_general y --radio_general, --ancho_maximo_contenido (1180px) y --alto_barra_superior
+ *         (76px, se reduce a 68px en movil), --fondo_* (degradados y superficies de cada componente) y
+ *         --fondo_grafico_hero/apoyo (ilustracion SVG de velas incrustada como data URI que se pinta
+ *         detras de la pagina, ver body::before).
+ * Cambiar un color de marca aqui lo cambia en toda la aplicacion y en los graficos de Chart.js, que leen
+ * estas variables con obtener_color_css(). */
 :root {
     --color_morado_principal: #6f3df4;
     --color_morado_secundario: #8b63ff;
@@ -39,6 +65,13 @@
     --fondo_grafico_apoyo: radial-gradient(circle at 72% 38%, rgba(111, 61, 244, 0.12), transparent 34%);
 }
 
+/* ==========================================================================
+ * SECCION: VARIABLES DEL TEMA OSCURO
+ * Que hace: sobrescribe las variables del tema claro cuando <html> tiene data-theme="dark".
+ * Como lo hace: mismas variables con valores oscuros (fondo casi negro, texto claro, morado mas saturado y estados con tonos pastel para mantener contraste). Lo que no se redefine aqui se hereda del tema claro.
+ * Elementos: las mismas variables de :root.
+ * Usado en: todo el sitio; el atributo lo escribe aplicar_tema() en funcionalidad_global.js y se recuerda en localStorage (wallet_theme).
+ * ========================================================================== */
 :root[data-theme="dark"] {
     --color_morado_principal: #7b2cff;
     --color_morado_secundario: #b08dff;
@@ -77,6 +110,13 @@
     --fondo_grafico_apoyo: radial-gradient(circle at 72% 38%, rgba(123, 44, 255, 0.2), transparent 34%);
 }
 
+/* ==========================================================================
+ * SECCION: RESET Y BASE DEL DOCUMENTO
+ * Que hace: normaliza el punto de partida del navegador.
+ * Como lo hace: box-sizing: border-box en todo (el padding no agranda las cajas), margin/padding en 0, color-scheme para que controles nativos (scroll, inputs) sigan el tema y fuente heredada en button/input/select.
+ * Elementos: *, html, html[data-theme], body, a, button/input/select.
+ * Usado en: todas las vistas.
+ * ========================================================================== */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -85,12 +125,21 @@
 
 html {
     color-scheme: light;
+    /* Evita que, en el movil, arrastrar hacia abajo desde el tope dispare "tirar para refrescar" y recargue la pagina. */
+    overscroll-behavior-y: contain;
 }
 
 html[data-theme="dark"] {
     color-scheme: dark;
 }
 
+/* ==========================================================================
+ * SECCION: FONDO DECORATIVO DE LA PAGINA
+ * Que hace: pinta el degradado de fondo y la ilustracion de grafico de velas detras del contenido.
+ * Como lo hace: body usa --fondo_pagina; body::before dibuja el SVG (--fondo_grafico_hero) fijo y centrado bajo la barra superior; body::after agrega un resplandor radial (--fondo_grafico_apoyo). Ambos usan position: fixed, pointer-events: none y z-index negativo para no bloquear clics. Tienen transition para el cambio de tema.
+ * Elementos: body, body::before, body::after (y sus variantes de tema oscuro).
+ * Usado en: todas las vistas. En el modo responsivo se reduce el tamano y opacidad de la ilustracion.
+ * ========================================================================== */
 body {
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background: var(--fondo_pagina);
@@ -146,6 +195,13 @@ select {
     font: inherit;
 }
 
+/* ==========================================================================
+ * SECCION: CONTENEDORES DE LAYOUT
+ * Que hace: controla el ancho y el espaciado de las paginas.
+ * Como lo hace: .contenedor centra el contenido con width: min(94%, 1180px) (fluido en movil, acotado en escritorio); .contenedor_con_menu agrega padding-top para no quedar debajo de la barra fija; .contenedor-centrado centra una tarjeta en pantalla completa (login).
+ * Elementos: .contenedor, .contenedor_con_menu, .contenedor-centrado.
+ * Usado en: todas las vistas.
+ * ========================================================================== */
 .contenedor {
     width: min(94%, var(--ancho_maximo_contenido));
     margin: 0 auto;
@@ -162,6 +218,13 @@ select {
     place-items: center;
 }
 
+/* ==========================================================================
+ * SECCION: BARRA SUPERIOR
+ * Que hace: cabecera fija con logo, menu, alertas y menu de usuario.
+ * Como lo hace: position: fixed de ancho completo con fondo translucido y backdrop-filter: blur; flex con space-between. .barra_sin_menu oculta menu y hamburguesa cuando no hay sesion.
+ * Elementos: .barra_superior, .barra_superior_interior, .barra_sin_menu.
+ * Usado en: todas las vistas.
+ * ========================================================================== */
 .barra_superior {
     position: fixed;
     inset: 0 0 auto 0;
@@ -173,6 +236,17 @@ select {
     z-index: 30;
 }
 
+.barra_superior .barra_superior_interior {
+    width: 100%;
+    max-width: none;
+    padding-inline: clamp(1rem, 2.5vw, 2.25rem);
+}
+
+.barra_sin_menu .menu_superior,
+.barra_sin_menu .boton_menu {
+    display: none !important;
+}
+
 .barra_superior_interior {
     height: 100%;
     display: flex;
@@ -181,6 +255,13 @@ select {
     gap: 1rem;
 }
 
+/* ==========================================================================
+ * SECCION: LOGO DE MARCA
+ * Que hace: muestra el logo claro u oscuro segun el tema.
+ * Como lo hace: dos <img> apiladas con position: absolute; el logo oscuro empieza con opacity 0 y el selector :root[data-theme="dark"] intercambia las opacidades. El texto alternativo .marca_wallet_texto esta oculto.
+ * Elementos: .marca_wallet, .marca_wallet_logos, .marca_wallet_logo(_claro/_oscuro), .marca_wallet_texto.
+ * Usado en: barra superior de todas las vistas. En movil el logo baja de 188x46 a 152x38.
+ * ========================================================================== */
 .marca_wallet {
     text-decoration: none;
     color: var(--color_texto_principal);
@@ -224,6 +305,13 @@ select {
     opacity: 1;
 }
 
+/* ==========================================================================
+ * SECCION: MENU DE NAVEGACION
+ * Que hace: enlaces principales y el submenu 'Modulo Forex'.
+ * Como lo hace: flex horizontal en escritorio; .grupo_menu_superior es relativo y su .submenu_menu_superior es absoluto y solo se muestra con la clase .grupo_menu_superior_abierto (la alterna JavaScript). .enlace_activo marca la pagina actual.
+ * Elementos: .menu_superior, .boton_menu_superior, .grupo_menu_superior, .submenu_menu_superior, .enlace_activo.
+ * Usado en: barra superior; lo construye normalizar_menu_superior(). En movil se convierte en panel desplegable vertical.
+ * ========================================================================== */
 .menu_superior {
     display: flex;
     align-items: center;
@@ -291,6 +379,13 @@ select {
     gap: 0.25rem;
 }
 
+/* ==========================================================================
+ * SECCION: CONTROLES DE LA BARRA: ALERTAS, TEMA Y USUARIO
+ * Que hace: agrupa los botones de la derecha de la barra.
+ * Como lo hace: botones circulares (.boton_toolbar, .boton_tema), avatar con foto o iniciales (.boton_avatar_superior) y su submenu (.submenu_usuario, visible con .submenu_usuario_abierto) con configuracion, tema y cerrar sesion.
+ * Elementos: .contenedor_alertas, .menu_usuario_superior, .boton_toolbar, .boton_tema, .boton_avatar_superior, .submenu_usuario, .item_submenu_usuario, .item_submenu_peligro.
+ * Usado en: barra superior; los crea renderizar_controles_superiores().
+ * ========================================================================== */
 .contenedor_alertas {
     position: relative;
     display: flex;
@@ -460,6 +555,13 @@ select {
     stroke-linejoin: round;
 }
 
+/* ==========================================================================
+ * SECCION: CAMPANA Y PANEL DE ALERTAS
+ * Que hace: contador de no leidas y panel desplegable con las alertas del usuario.
+ * Como lo hace: el contador es una insignia (se oculta con .contador_alertas_oculto cuando es 0); .panel_alertas esta oculto y se muestra con .panel_alertas_abierto; cada <li> toma color segun su nivel (.alerta_nivel_informativo | aceptacion | alerta) y se atenua con .alerta_superior_vista. Tambien incluye .lista_estado_seguridad con los estados .estado_seguridad_ok y .estado_seguridad_critico que usa el perfil.
+ * Elementos: .contador_alertas, .panel_alertas, .lista_alertas_superior, .alerta_nivel_*, .boton_alerta_icono, .lista_estado_seguridad.
+ * Usado en: barra superior (renderizar_panel_alertas_superior) y perfil (seguridad).
+ * ========================================================================== */
 .contador_alertas {
     position: absolute;
     top: -6px;
@@ -605,6 +707,13 @@ select {
     display: block;
 }
 
+/* ==========================================================================
+ * SECCION: BOTON HAMBURGUESA
+ * Que hace: abre y cierra el menu en pantallas pequenas.
+ * Como lo hace: tres <span> como barras; por defecto display: none y solo se muestra en el modo responsivo (max-width 760px).
+ * Elementos: .boton_menu, .boton_menu span.
+ * Usado en: barra superior; lo activa inicializar_menu_responsive().
+ * ========================================================================== */
 .boton_menu {
     display: none;
     width: 42px;
@@ -625,6 +734,13 @@ select {
     border-radius: 30px;
 }
 
+/* ==========================================================================
+ * SECCION: TIPOGRAFIA Y ENCABEZADOS
+ * Que hace: estilos de titulos, iconos circulares y textos secundarios.
+ * Como lo hace: h1/h2 con tamano fluido; .icono_circular encierra un SVG en un circulo; span/small usan el color de texto secundario; .etiqueta_pequena para etiquetas.
+ * Elementos: h1, h2, .titulo_icono, .titulo_secundario_icono, .icono_circular, span, small, .etiqueta_pequena.
+ * Usado en: todas las vistas.
+ * ========================================================================== */
 h1 {
     font-size: clamp(1.45rem, 2.2vw, 2.2rem);
     margin-bottom: 0.3rem;
@@ -700,6 +816,13 @@ small {
     letter-spacing: 0.65px;
 }
 
+/* ==========================================================================
+ * SECCION: TARJETAS Y BLOQUES BASE
+ * Que hace: contenedores con borde, sombra y radio que agrupan contenido.
+ * Como lo hace: superficie con --color_superficie, borde --color_borde, --sombra_general y --radio_general. Variantes: .tarjeta-formulario, .bloque_banco, .cabecera_destacada, .aviso_bootstrap_login (aviso de base vacia) y .lista_texto.
+ * Elementos: .tarjeta, .tarjeta-formulario, .bloque_banco, .cabecera-principal, .cabecera_destacada, .aviso_bootstrap_login, .lista_texto.
+ * Usado en: todas las vistas.
+ * ========================================================================== */
 .tarjeta {
     background-color: var(--color_superficie);
     border: 1px solid var(--color_borde);
@@ -759,6 +882,13 @@ small {
     padding-left: 0.65rem;
 }
 
+/* ==========================================================================
+ * SECCION: LOGIN, REGISTRO Y RECUPERACION
+ * Que hace: estilos de la pantalla de acceso.
+ * Como lo hace: rejilla de dos columnas con panel informativo y formularios; el selector Login/Registro (.selector_acceso) activa un panel a la vez con .panel_formulario_activo; .rejilla_campos_dobles y .campo_telefono_compuesto organizan campos en pares y el telefono con prefijo; .mensaje_info | error | exito colorean los mensajes de estado.
+ * Elementos: .panel_acceso, .panel_info_acceso, .selector_acceso, .boton_selector_acceso, .panel_formulario_activo, .rejilla_campos_dobles, .campo_telefono_compuesto, .mensaje_*.
+ * Usado en: login.html.
+ * ========================================================================== */
 .panel_acceso {
     width: 100%;
     display: grid;
@@ -906,6 +1036,13 @@ small {
     color: var(--color_exito);
 }
 
+/* ==========================================================================
+ * SECCION: PANEL PRINCIPAL: SALDO Y ATAJOS
+ * Que hace: tarjeta de saldo, franja de estado y atajos en forma de iconos.
+ * Como lo hace: .resumen_wallet es flex con hover elevado; .rejilla_atajos distribuye los atajos (.atajo_icono) y cada uno muestra un panel (.panel_icono) con .panel_activo; .oculto esconde bloques con display: none.
+ * Elementos: .resumen_wallet, .bloque_saldo_principal, .franja_estado_externa, .contenedor_atajos_cuenta, .rejilla_atajos, .atajo_icono, .panel_icono, .oculto.
+ * Usado en: principal.html; lo controla inicializar_accesos_cuenta().
+ * ========================================================================== */
 .resumen_wallet {
     display: flex;
     justify-content: space-between;
@@ -1054,6 +1191,13 @@ small {
     display: block;
 }
 
+/* ==========================================================================
+ * SECCION: CUENTAS, TARJETAS VISUALES Y RESUMENES
+ * Que hace: rejillas y listas de cuentas, tarjetas y resumenes del panel.
+ * Como lo hace: grid de columnas flexibles; .tarjeta_visual imita una tarjeta bancaria con degradado; .lista_item_resumen muestra titulo y detalle apilados.
+ * Elementos: .rejilla_resumen_wallet, .lista_cuentas, .grid_cuentas_detalle, .tarjeta_detalle_cuenta, .tarjeta_visual(_resumen), .lista_item_resumen, .cabecera_panel_accion, .fila_acciones_modales.
+ * Usado en: principal.html y perfil.html.
+ * ========================================================================== */
 .rejilla_resumen_wallet {
     margin-top: 0.85rem;
     display: grid;
@@ -1190,6 +1334,13 @@ small {
     justify-content: space-between;
 }
 
+/* ==========================================================================
+ * SECCION: MODULOS OPERATIVOS Y AHORROS
+ * Que hace: cabeceras de modulos (servicios, ahorro, adelanto) y bolsillos de ahorro.
+ * Como lo hace: .tarjeta_ahorro con .barra_progreso_ahorro cuyo <span> recibe el ancho en porcentaje y el color del bolsillo desde JavaScript; .grupo_color_picker y input[type=color] estilizan el selector de color.
+ * Elementos: .cabecera_modulo_operativo, .tarjeta_operativa, .texto_estado_inline, .grupo_color_picker, .campo_color_visual, .tarjeta_ahorro, .barra_progreso_ahorro.
+ * Usado en: principal.html.
+ * ========================================================================== */
 .cabecera_modulo_operativo {
     display: grid;
     gap: 0.18rem;
@@ -1274,6 +1425,13 @@ input[type="color"] {
 }
 
 .rejilla_operaciones,
+/* ==========================================================================
+ * SECCION: REJILLAS DE TARJETAS
+ * Que hace: rejilla generica de tarjetas informativas.
+ * Como lo hace: grid de 2 columnas iguales (repeat(2, minmax(0, 1fr))) que pasa a 1 columna en el modo tablet.
+ * Elementos: .rejilla-tarjetas, .bloque_informativo.
+ * Usado en: varias vistas.
+ * ========================================================================== */
 .rejilla-tarjetas {
     margin-top: 1rem;
     display: grid;
@@ -1290,6 +1448,13 @@ input[type="color"] {
     margin-top: 1rem;
 }
 
+/* ==========================================================================
+ * SECCION: PERFIL
+ * Que hace: pagina de perfil: datos, foto, seguridad, accesos y trofeos.
+ * Como lo hace: rejilla de dos columnas (datos a la izquierda, resumen a la derecha); avatar circular con imagen o iniciales; bloques <details> (.bloque_desplegable_perfil); selector de foto con el <input type=file> oculto (.input_archivo_oculto) y un boton estetico (.boton_archivo_estetico); listas de accesos y trofeos (.trofeo_item).
+ * Elementos: .rejilla_perfil, .perfil_*, .bloque_desplegable_perfil, .boton_archivo_*, .lista_accesos_perfil, .lista_trofeos_perfil, .trofeo_item.
+ * Usado en: perfil.html.
+ * ========================================================================== */
 .rejilla_perfil {
     margin-top: 1rem;
     display: grid;
@@ -1342,9 +1507,14 @@ input[type="color"] {
     color: var(--color_morado_principal);
 }
 
+/* Correccion responsiva: min-width: 0 permite que este hijo flex se encoja por debajo del ancho de su
+   contenido y overflow-wrap parte correos o nombres largos; sin esto, a 390px el correo empujaba toda la
+   pagina a un ancho de 464px y aparecia scroll horizontal. */
 .perfil_encabezado_texto {
     display: grid;
     gap: 0.2rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .perfil_encabezado_texto h2 {
@@ -1558,6 +1728,13 @@ input[type="color"] {
     font-size: 0.88rem;
 }
 
+/* ==========================================================================
+ * SECCION: AJUSTES PUNTUALES DEL TEMA OSCURO
+ * Que hace: reglas que no se resuelven solo con variables.
+ * Como lo hace: sobrescribe fondos, bordes o sombras de componentes concretos cuando data-theme="dark".
+ * Elementos: .icono_circular, .aviso_bootstrap_login, .lista_item_resumen, .boton_archivo_estetico, .boton_archivo_icono, .trofeo_item.
+ * Usado en: todo el sitio en modo oscuro.
+ * ========================================================================== */
 :root[data-theme="dark"] .icono_circular {
     background-color: rgba(255, 255, 255, 0.04);
     border-color: rgba(176, 141, 255, 0.22);
@@ -1593,6 +1770,13 @@ input[type="color"] {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* ==========================================================================
+ * SECCION: FORMULARIOS Y BOTONES
+ * Que hace: estilo comun de campos, etiquetas, selects y botones.
+ * Como lo hace: inputs y selects con --fondo_input y borde; :focus resalta con el morado de marca; input[readonly] se atenua; .boton-primario es el boton principal; .boton_icono el secundario; .boton_monto_rapido en .fila_montos_rapidos (montos de 1 clic); .enlace_accion para enlaces con apariencia de accion.
+ * Elementos: .formulario, label, input, select, .boton_icono, .boton-primario, .enlace_accion, .fila_montos_rapidos, .boton_monto_rapido.
+ * Usado en: todas las vistas con formularios.
+ * ========================================================================== */
 .formulario {
     display: flex;
     flex-direction: column;
@@ -1722,6 +1906,13 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(111, 61, 244, 0.08);
 }
 
+/* ==========================================================================
+ * SECCION: MOVIMIENTOS: FILTROS, TABLA Y GRAFICOS
+ * Que hace: filtros de busqueda, tabla del historial y contenedores de graficos.
+ * Como lo hace: .contenedor_tabla tiene overflow-x: auto y .tabla_movimientos min-width: 680px, asi que en pantallas angostas la tabla se desplaza horizontalmente; .contenedor_grafico fija la altura del canvas para Chart.js (maintainAspectRatio: false depende de esa altura).
+ * Elementos: .rejilla_filtros, .rejilla_filtros_compacta, .resumen_historial_movimientos, .contenedor_tabla, .tabla_movimientos, .contenedor_grafico.
+ * Usado en: movimientos.html y operaciones.html.
+ * ========================================================================== */
 .rejilla_filtros {
     margin-top: 0.7rem;
     display: grid;
@@ -1798,6 +1989,13 @@ select:focus {
     display: block;
 }
 
+/* ==========================================================================
+ * SECCION: BLOQUES DESPLEGABLES
+ * Que hace: secciones plegables basadas en <details>/<summary>.
+ * Como lo hace: se oculta el marcador nativo y se dibuja .indicador_desplegable con ::before que cambia con [open].
+ * Elementos: .bloque_desplegable, .titulo_desplegable, .indicador_desplegable, .contenido_desplegable.
+ * Usado en: principal.html, perfil.html y operaciones.html.
+ * ========================================================================== */
 .bloque_desplegable {
     border: 1px solid var(--color_borde);
     border-radius: 14px;
@@ -1853,6 +2051,13 @@ select:focus {
     padding: 0.75rem 1rem 1rem;
 }
 
+/* ==========================================================================
+ * SECCION: FAVORITOS CON ACCION
+ * Que hace: fila de un beneficiario con boton 'Quitar'.
+ * Como lo hace: flex con el contenido a la izquierda y el boton a la derecha; en movil se apila (ver modo responsivo 760px).
+ * Elementos: .item_favorito_accion, .contenido_favorito, .boton_accion_favorito.
+ * Usado en: principal.html y operaciones.html.
+ * ========================================================================== */
 .item_favorito_accion {
     display: flex;
     align-items: flex-start;
@@ -1884,6 +2089,13 @@ select:focus {
     min-width: 84px;
 }
 
+/* ==========================================================================
+ * SECCION: CAMBIO DE CONTRASENA BLOQUEADO Y TOASTS
+ * Que hace: estado visual de los campos de contrasena mientras el PIN no se valida y estilo de los toasts.
+ * Como lo hace: .bloque_password_reset_bloqueado atenua el bloque (opacity 0.56) mientras los campos estan deshabilitados por JavaScript; .swal2-popup.wallet-toast adapta SweetAlert2 al tema.
+ * Elementos: .bloque_password_reset(_bloqueado), .swal2-popup.wallet-toast.
+ * Usado en: login.html y modal de recuperacion del perfil.
+ * ========================================================================== */
 .bloque_password_reset {
     transition: opacity 0.18s ease, filter 0.18s ease;
 }
@@ -1906,6 +2118,13 @@ select:focus {
     font-size: 0.92rem;
 }
 
+/* ==========================================================================
+ * SECCION: MODULO FOREX: ACADEMIA
+ * Que hace: diseno de mercado, aprendizaje y cuestionario.
+ * Como lo hace: layout de dos columnas (barra lateral pegajosa con progreso + contenido); tarjetas de modulo con estados .tarjeta_modulo_forex_activa | completa | bloqueada; barra de progreso; metricas; bloques de contenido y preguntas del quiz con opciones tipo radio.
+ * Elementos: .layout_forex_academia, .barra_lateral_forex, .panel_progreso_forex, .barra_progreso_forex, .tarjeta_modulo_forex(_*), .tarjeta_metrica_forex, .bloque_forex_detalle, .item_quiz_forex, .fila_opcion_quiz.
+ * Usado en: mercado_forex.html, aprendizaje_forex.html y cuestionario_forex.html.
+ * ========================================================================== */
 .layout_forex_academia {
     display: grid;
     grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
@@ -2153,6 +2372,13 @@ select:focus {
     border-color: rgba(111, 61, 244, 0.22);
 }
 
+/* ==========================================================================
+ * SECCION: SIMULADOR FOREX
+ * Que hace: diseno de la pagina del simulador.
+ * Como lo hace: layout en columnas con panel de contexto, bloque de resultado y rejillas de operaciones y tarjetas; .estado_vacio_grafico superpone un mensaje sobre el grafico hasta que haya una simulacion (se oculta con .estado_vacio_grafico_oculto).
+ * Elementos: .layout_simulador_forex, .panel_simulador_contexto, .bloque_resultado_simulador, .rejilla_operaciones_simulador, .rejilla_tarjetas_simulador, .estado_vacio_grafico(_oculto).
+ * Usado en: simulador_inversion.html.
+ * ========================================================================== */
 .layout_simulador_forex {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2207,6 +2433,13 @@ select:focus {
     display: none;
 }
 
+/* ==========================================================================
+ * SECCION: MODALES
+ * Que hace: ventanas emergentes basadas en el elemento <dialog>.
+ * Como lo hace: el <dialog> usa showModal() (capa superior y ::backdrop con desenfoque); el panel limita su altura a 88vh y su contenido hace scroll interno. Ancho fluido: min(860px, 100vw - 2rem), por eso el modal ya es adaptable sin media query.
+ * Elementos: .modal_wallet, .modal_wallet::backdrop, .modal_wallet_panel(_compacto), .modal_wallet_cabecera, .modal_wallet_contenido, .boton_icono_cerrar.
+ * Usado en: principal.html, perfil.html y login.html (activacion).
+ * ========================================================================== */
 .modal_wallet {
     width: min(860px, calc(100vw - 2rem));
     max-width: calc(100vw - 2rem);
@@ -2279,6 +2512,13 @@ select:focus {
     flex-shrink: 0;
 }
 
+/* ==========================================================================
+ * SECCION: MODO RESPONSIVO 1: TABLET (max-width: 980px)
+ * Que hace: reduce las composiciones de varias columnas a una sola cuando el ancho es de 980px o menos.
+ * Como lo hace: (1) Fondo: la ilustracion se reduce a 1180px y baja su opacidad. (2) Todas las rejillas de layout de varias columnas pasan a grid-template-columns: 1fr: academia y simulador Forex, panel de acceso, rejillas de wallet, resumen, operaciones, tarjetas, perfil, atajos, campos dobles, franja de estado, filtros y resumen de movimientos. (3) Los montos rapidos pasan a 2 columnas. (4) Selector de foto, resumen de perfil y telefono compuesto se apilan.
+ * Elementos: las clases listadas en los selectores; no cambia el menu, que sigue horizontal hasta 760px.
+ * Usado en: todas las vistas, en tablets y ventanas angostas.
+ * ========================================================================== */
 @media (max-width: 980px) {
     body::before {
         background-size: 1180px auto;
@@ -2316,6 +2556,13 @@ select:focus {
     }
 }
 
+/* ==========================================================================
+ * SECCION: MODO RESPONSIVO 2: MOVIL (max-width: 760px)
+ * Que hace: adapta barra, menu y componentes a telefonos.
+ * Como lo hace: (1) :root redefine --alto_barra_superior a 68px, que mueve a la vez el contenedor y el fondo. (2) Fondo aun mas pequeno (980px). (3) Aparece el boton hamburguesa y .menu_superior pasa a panel vertical desplegable (position absolute bajo la barra, visible con .menu_abierto, que alterna inicializar_menu_responsive()); enlaces a ancho completo y submenu Forex en flujo normal. (4) Alertas y menu de usuario se reordenan (el panel de alertas se pega al borde, el submenu limita su ancho a 90vw). (5) Logo mas chico. (6) La barra lateral Forex deja de ser pegajosa. (7) Resumen de wallet y favoritos pasan a columna y el boton Quitar ocupa todo el ancho.
+ * Elementos: las clases listadas en los selectores; se suma a las reglas del modo tablet (980px), que siguen vigentes.
+ * Usado en: todas las vistas, en telefonos. Limitacion actual: no hay un tercer corte para pantallas menores a 480px; ahi se depende del ancho fluido (min(94%, 1180px)) y del scroll horizontal de .contenedor_tabla.
+ * ========================================================================== */
 @media (max-width: 760px) {
     :root {
         --alto_barra_superior: 68px;

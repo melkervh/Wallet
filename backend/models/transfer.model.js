@@ -1,3 +1,16 @@
+/**
+ * Modulo: models/transfer.model.js
+ *
+ * Que hace: logica de negocio de transferencias y beneficiarios: preparar el formulario, administrar favoritos
+ *   y ejecutar o programar envios, incluyendo el abono espejo cuando el destino es otra wallet interna.
+ * Como lo hace: cada escritura corre en UNA transaccion; la cuenta origen (y la destino interna en envios
+ *   inmediatos) se bloquea con FOR UPDATE para evitar carreras de saldo. Las lecturas reutilizan los DAOs via
+ *   base.model.
+ * Datos que participan: tablas `cuentas`, `beneficiarios`, `transacciones`, `movimientos_cuenta`, `usuarios`
+ *   (datos del titular destino) y `alertas_usuario`.
+ * Consultas SQL: ver detalle en cada funcion.
+ */
+
 const { withTransaction } = require("../db");
 const {
     HttpError,
@@ -13,15 +26,31 @@ const {
     insertOrUpdateBeneficiary
 } = require("./base.model");
 
-// Funcion: stripBeneficiaryMeta
-// Aqui limpio metadatos internos del beneficiario antes de devolverlo al frontend.
+/**
+ * Funcion: stripBeneficiaryMeta
+ *
+ * Que hace: limpia metadatos internos del beneficiario antes de devolverlo al frontend.
+ * Como lo hace: desestructura el objeto y descarta existedBefore y favoriteAddedNow.
+ * Datos que participan: `beneficiary` (resultado de insertOrUpdateBeneficiary).
+ * Consultas SQL: ninguna.
+ * Retorna: beneficiario publico.
+ */
 function stripBeneficiaryMeta(beneficiary) {
     const { existedBefore, favoriteAddedNow, ...publicBeneficiary } = beneficiary || {};
     return publicBeneficiary;
 }
 
-// Funcion: getTransferMetadata
-// Aqui preparo las cuentas, favoritos y resumen operativo previo al formulario de transferencias.
+/**
+ * Funcion: getTransferMetadata
+ *
+ * Que hace: prepara cuentas, favoritos y resumen operativo previo al formulario de transferencias.
+ * Como lo hace: Promise.all con tres lecturas de los DAOs y calcula en memoria totales (saldo disponible,
+ *   cuentas activas, favoritos activos).
+ * Datos que participan: `userId`.
+ * Consultas SQL: no escribe SQL a mano; usa getAccounts (cuentas), getFavoriteBeneficiaries (beneficiarios,
+ *   20) y getOperationSnapshot (resumen mensual y ultima transferencia sobre transacciones).
+ * Retorna: { accounts, favoriteBeneficiaries, summary }.
+ */
 async function getTransferMetadata(userId) {
     // Lectura SQL indirecta:
     // Aqui no escribo consultas a mano en este bloque porque reutilizo helpers de base.model.js.
@@ -48,8 +77,17 @@ async function getTransferMetadata(userId) {
     };
 }
 
-// Funcion: createBeneficiary
-// Aqui creo o actualizo un beneficiario y, si aplica, lo marco como favorito.
+/**
+ * Funcion: createBeneficiary
+ *
+ * Que hace: crea o actualiza un beneficiario y, si aplica, lo marca como favorito.
+ * Como lo hace: en una transaccion llama a insertOrUpdateBeneficiary (por defecto saveFavorite = true) y, si
+ *   el favorito se agrego en este momento, deja una alerta.
+ * Datos que participan: `userId`, payload del beneficiario.
+ * Consultas SQL: UPSERT en beneficiarios (INSERT ... ON CONFLICT (usuario_id, numero_cuenta_destino) DO
+ *   UPDATE) via beneficiary.dao, y insertAlert.
+ * Retorna: beneficiario publico.
+ */
 async function createBeneficiary(userId, payload) {
     return withTransaction(async (client) => {
         // INSERT o UPDATE SQL indirecto:
@@ -74,8 +112,18 @@ async function createBeneficiary(userId, payload) {
     });
 }
 
-// Funcion: removeFavoriteBeneficiary
-// Aqui saco un beneficiario de favoritos sin eliminar por completo su registro base.
+/**
+ * Funcion: removeFavoriteBeneficiary
+ *
+ * Que hace: saca un beneficiario de favoritos sin eliminar su registro base.
+ * Como lo hace: valida el id, hace un UPDATE que solo apaga es_favorito (el beneficiario se conserva para
+ *   historial) y deja una alerta.
+ * Datos que participan: `userId`, `beneficiaryId`.
+ * Consultas SQL: UPDATE beneficiarios SET es_favorito = FALSE, actualizado_en = NOW() WHERE id_beneficiario =
+ *   $1 AND usuario_id = $2 AND activo = TRUE AND es_favorito = TRUE RETURNING columnas del beneficiario: si no
+ *   devuelve fila, ya no era favorito o no es del usuario (404).
+ * Retorna: beneficiario publico.
+ */
 async function removeFavoriteBeneficiary(userId, beneficiaryId) {
     return withTransaction(async (client) => {
         const favoriteId = Number(beneficiaryId);
@@ -128,8 +176,15 @@ async function removeFavoriteBeneficiary(userId, beneficiaryId) {
     });
 }
 
-// Funcion: mapBeneficiaryRow
-// Aqui traduzco la fila SQL usada al quitar favoritos al formato publico del beneficiario.
+/**
+ * Funcion: mapBeneficiaryRow
+ *
+ * Que hace: traduce la fila SQL usada al quitar favoritos al formato publico del beneficiario.
+ * Como lo hace: renombra columnas y usa el nombre como alias si no hay alias.
+ * Datos que participan: fila de `beneficiarios`.
+ * Consultas SQL: ninguna.
+ * Retorna: objeto beneficiario.
+ */
 function mapBeneficiaryRow(row) {
     return {
         id: row.id_beneficiario,
@@ -145,10 +200,17 @@ function mapBeneficiaryRow(row) {
     };
 }
 
-// Funcion: mapInternalWalletBeneficiary
-// Aqui convierto una cuenta wallet interna en un destinatario publico temporal.
-// Lo uso cuando la transferencia apunta a una cuenta existente dentro de la base
-// aunque el usuario no haya guardado ese destino como favorito todavia.
+/**
+ * Funcion: mapInternalWalletBeneficiary
+ *
+ * Que hace: convierte una cuenta wallet interna en un destinatario publico temporal, sin guardarlo como
+ *   favorito.
+ * Como lo hace: arma el nombre desde nombres y apellidos del titular (o el alias de la cuenta) y fija
+ *   tipoDestino 'wallet' y banco 'Wallet Digital'.
+ * Datos que participan: fila de cuentas unida a usuarios (getInternalDestinationAccount).
+ * Consultas SQL: ninguna.
+ * Retorna: objeto beneficiario (id null).
+ */
 function mapInternalWalletBeneficiary(accountRow) {
     const ownerName = cleanText(`${accountRow.nombres || ""} ${accountRow.apellidos || ""}`, 120) || accountRow.alias_cuenta;
 
@@ -166,10 +228,19 @@ function mapInternalWalletBeneficiary(accountRow) {
     };
 }
 
-// Funcion: getInternalDestinationAccount
-// Aqui busco si el numero de cuenta destino realmente pertenece a una wallet interna.
-// Si existe, bloqueo la cuenta cuando la transferencia es inmediata para evitar
-// carreras de saldo al acreditar el dinero.
+/**
+ * Funcion: getInternalDestinationAccount
+ *
+ * Que hace: busca si el numero de cuenta destino pertenece a una wallet interna.
+ * Como lo hace: SELECT por numero de cuenta; con options.lockRow bloquea la fila (FOR UPDATE) cuando la
+ *   transferencia es inmediata para evitar carreras de saldo al acreditar.
+ * Datos que participan: `client`, `destinationAccountNumber` (max 34), `options.lockRow`.
+ * Consultas SQL: SELECT c.id_cuenta, c.usuario_id, c.alias_cuenta, c.numero_cuenta, c.saldo_disponible,
+ *   c.saldo_contable, c.estado, u.nombres, u.apellidos, u.correo, u.telefono FROM cuentas c JOIN usuarios u ON
+ *   u.id_usuario = c.usuario_id WHERE c.numero_cuenta = $1 LIMIT 1 [FOR UPDATE]: el JOIN trae los datos del
+ *   titular para notificar y nombrar al destinatario.
+ * Retorna: fila o null.
+ */
 async function getInternalDestinationAccount(client, destinationAccountNumber, options = {}) {
     const numeroCuenta = cleanText(destinationAccountNumber, 34);
     if (!numeroCuenta) {
@@ -204,9 +275,24 @@ async function getInternalDestinationAccount(client, destinationAccountNumber, o
     return result.rows[0] || null;
 }
 
-// Funcion: createRecipientMirrorTransaction
-// Aqui registro la contraparte de una transferencia wallet interna como abono
-// en la cuenta destino para que el saldo y el historial del receptor si se reflejen.
+/**
+ * Funcion: createRecipientMirrorTransaction
+ *
+ * Que hace: registra la contraparte de una transferencia interna como abono en la cuenta destino, para que el
+ *   receptor vea saldo e historial.
+ * Como lo hace: inserta una transaccion 'deposito' a nombre del receptor ligada a la referencia del emisor,
+ *   suma el monto a la cuenta destino, escribe el movimiento 'credito' y, si el receptor es otro usuario, le
+ *   deja una alerta.
+ * Datos que participan: `client`, { destinationAccount, sourceAccount, senderUserId, amount, concept,
+ *   senderReference }.
+ * Consultas SQL:
+ *   1) INSERT INTO transacciones (tipo 'deposito', estado 'completada', referencia REC-..., referencia_externa =
+ *      referencia del emisor) RETURNING id_transaccion, referencia_interna.
+ *   2) UPDATE cuentas SET saldo_disponible, saldo_contable WHERE id_cuenta = $3.
+ *   3) INSERT INTO movimientos_cuenta (tipo 'credito', saldo_resultante).
+ *   4) insertAlert al receptor.
+ * Retorna: { transactionId, balance }.
+ */
 async function createRecipientMirrorTransaction(client, {
     destinationAccount,
     sourceAccount,
@@ -295,9 +381,31 @@ async function createRecipientMirrorTransaction(client, {
     };
 }
 
-// Funcion: createTransfer
-// Aqui ejecuto o programo una transferencia validando cuenta, saldo, fechas y beneficiario.
-// Tambien actualizo saldo, movimiento y alertas dentro de la misma transaccion.
+/**
+ * Funcion: createTransfer
+ *
+ * Que hace: ejecuta o programa una transferencia validando cuenta, saldo, fechas y beneficiario.
+ * Como lo hace: en una transaccion: verifica que la wallet no este congelada, valida datos, bloquea la cuenta
+ *   origen, comprueba saldo (inmediata) o fecha futura (programada), detecta si el destino es una wallet
+ *   interna, crea o reutiliza el beneficiario, inserta la transaccion y, si es inmediata, descuenta el origen,
+ *   registra el debito y acredita el espejo al destino interno. Cierra con alertas.
+ * Datos que participan: `userId`, payload { sourceAccountId, amount, concept, transferType ('inmediata' |
+ *   'programada'), scheduledDate, destinationAccount, beneficiaryId, saveFavorite, internalReference,
+ *   externalReference, notes, ... }.
+ * Consultas SQL:
+ *   1) SELECT ... FROM cuentas WHERE id_cuenta = $1 AND usuario_id = $2 FOR UPDATE: bloquea la cuenta origen.
+ *   2) getInternalDestinationAccount: detecta wallet destino.
+ *   3) insertOrUpdateBeneficiary: INSERT ... ON CONFLICT DO UPDATE sobre beneficiarios.
+ *   4) INSERT INTO transacciones (tipo 'transferencia', estado 'completada' o 'programada') RETURNING
+ *      id_transaccion, referencia_interna: el error 23505 (clave unica) se traduce a 'La referencia interna ya
+ *      existe'.
+ *   5) UPDATE cuentas SET saldo_disponible, saldo_contable (descuento del origen, solo inmediata).
+ *   6) INSERT INTO movimientos_cuenta (tipo 'debito', saldo_resultante).
+ *   7) createRecipientMirrorTransaction si el destino es interno.
+ *   8) insertAlert (transferencia y favorito agregado).
+ * Retorna: { message, transfer: { id, referencia, estado, monto, beneficiario, saldoDisponibleActual, fecha }
+ *   }.
+ */
 async function createTransfer(userId, payload) {
     return withTransaction(async (client) => {
         await ensureWalletOperationAllowed(userId, client);

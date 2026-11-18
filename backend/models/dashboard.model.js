@@ -1,3 +1,13 @@
+/**
+ * Modulo: models/dashboard.model.js
+ *
+ * Que hace: arma el dashboard principal del usuario.
+ * Como lo hace: consulta varios DAOs en paralelo y calcula totales en memoria.
+ * Datos que participan: usuario, cuentas, beneficiarios, tarjetas, pagos programados, alertas,
+ * adelanto salarial activo y movimientos.
+ * Consultas SQL: las de los DAOs (user, account, beneficiary, alert, salary-advance y movement).
+ */
+
 const {
     HttpError,
     getUserById,
@@ -11,9 +21,21 @@ const {
     getMovements
 } = require("./base.model");
 
-// Funcion: getDashboard
-// Aqui armo el dashboard principal mezclando resumen financiero,
-// seguridad, favoritos, pagos, alertas y movimientos recientes.
+/**
+ * Funcion: getDashboard
+ *
+ * Que hace: arma el dashboard principal mezclando resumen financiero, seguridad, favoritos,
+ * pagos, alertas y movimientos recientes.
+ * Como lo hace: Promise.all con 9 lecturas independientes (una sola espera en lugar de nueve).
+ * Luego suma con reduce los saldos disponible/retenido/contable de todas las cuentas, elige la
+ * cuenta principal (o la primera), toma el pago mas proximo y separa pagos programados de
+ * suscripciones segun `categoria`.
+ * Datos que participan: `userId`; limites: 8 favoritos, 8 pagos, 6 alertas, 8 movimientos.
+ * Consultas SQL: getUserById, getAccounts, getFavoriteBeneficiaries, getCards, getPayments, getAlerts,
+ * getMonthlySummary, getMovements y getActiveSalaryAdvance (ver carpeta dao).
+ * Retorna: { user, summary, accounts, favoriteBeneficiaries, cards, scheduledPayments, subscriptions,
+ * alerts, recentMovements }. Lanza 401 si el usuario ya no existe.
+ */
 async function getDashboard(userId) {
     const [user, accounts, favorites, cards, payments, alerts, summary, recentMovements, activeSalaryAdvance] = await Promise.all([
         getUserById(userId),

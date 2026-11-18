@@ -3,7 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wallet Digital | Login</title>
+    <title>Wallet Digital | Iniciar sesion y registro</title>
+    <meta name="description" content="Accede a Wallet Digital: tu billetera en linea para transferencias, pagos de servicios, ahorros y herramientas de aprendizaje Forex, con acceso seguro.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="application-name" content="Wallet Digital">
+    <link rel="icon" type="image/png" href="../recursos/imagenes/Nova%20Black.png">
+    <link rel="canonical" href="{{BASE_URL}}/views/login.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Wallet Digital">
+    <meta property="og:locale" content="es_SV">
+    <meta property="og:title" content="Wallet Digital | Iniciar sesion y registro">
+    <meta property="og:description" content="Accede a Wallet Digital: tu billetera en linea para transferencias, pagos de servicios, ahorros y herramientas de aprendizaje Forex, con acceso seguro.">
+    <meta property="og:url" content="{{BASE_URL}}/views/login.html">
+    <meta property="og:image" content="{{BASE_URL}}/recursos/imagenes/Nova%20Black.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Wallet Digital | Iniciar sesion y registro">
+    <meta name="twitter:description" content="Accede a Wallet Digital: tu billetera en linea para transferencias, pagos de servicios, ahorros y herramientas de aprendizaje Forex, con acceso seguro.">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Wallet Digital","applicationCategory":"FinanceApplication","operatingSystem":"Web","inLanguage":"es","url":"{{BASE_URL}}/views/login.html","description":"Accede a Wallet Digital: tu billetera en linea para transferencias, pagos de servicios, ahorros y herramientas de aprendizaje Forex, con acceso seguro."}</script>
     <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
 </head>
 <body>
@@ -19,9 +36,7 @@
             <button id="boton_menu" class="boton_menu" type="button" aria-label="Abrir menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
-            <nav id="menu_superior" class="menu_superior">
-                <a href="login.html" class="enlace_activo">Login</a>
-            </nav>
+            <nav id="menu_superior" class="menu_superior"></nav>
             <div class="contenedor_alertas">
                 <button id="boton_alertas" class="boton_alertas" type="button" aria-label="Abrir alertas" aria-expanded="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0v5l2 2H4l2-2z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
@@ -174,6 +189,29 @@
             </article>
         </section>
     </main>
+
+    <dialog id="modal_doble_factor" class="modal_wallet">
+        <div class="modal_wallet_panel modal_wallet_panel_compacto">
+            <div class="modal_wallet_cabecera">
+                <div>
+                    <h2>Verificacion en dos pasos</h2>
+                    <p id="doble_factor_destino">Ingresa el codigo de 6 digitos que enviamos a tu correo para terminar de iniciar sesion.</p>
+                </div>
+                <button type="button" class="boton_icono boton_icono_cerrar" data-cerrar-modal="modal_doble_factor" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal_wallet_contenido">
+                <form id="formulario_doble_factor" class="formulario" novalidate>
+                    <label for="doble_factor_pin">Codigo de verificacion</label>
+                    <input id="doble_factor_pin" name="doble_factor_pin" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
+
+                    <div class="fila_acciones_modales fila_acciones_modales_login">
+                        <button type="submit" class="boton boton-primario">Verificar e ingresar</button>
+                    </div>
+                    <p id="mensaje_doble_factor" class="texto_estado_formulario ayuda_formulario">El codigo vence en pocos minutos y solo sirve una vez.</p>
+                </form>
+            </div>
+        </div>
+    </dialog>
 
     <dialog id="modal_activacion_registro" class="modal_wallet">
         <div class="modal_wallet_panel modal_wallet_panel_compacto">

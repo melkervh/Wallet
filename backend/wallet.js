@@ -1,3 +1,14 @@
+/**
+ * Modulo: wallet.js
+ *
+ * Que hace: fachada de compatibilidad que expone funciones clave del backend.
+ * Como lo hace: reexporta funciones de los controladores de auth, dashboard y transfer y la clase HttpError;
+ * getSession se resuelve con carga diferida (require dentro de la funcion) para evitar dependencias
+ *   circulares.
+ * Datos que participan: ninguno propio.
+ * Consultas SQL: ninguna directa.
+ */
+
 const authController = require("./controllers/auth.controller");
 const dashboardController = require("./controllers/dashboard.controller");
 const transferController = require("./controllers/transfer.controller");

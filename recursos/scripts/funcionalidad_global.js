@@ -1,3 +1,18 @@
+/**
+ * Modulo: recursos/scripts/funcionalidad_global.js
+ *
+ * Que hace: logica de todo el frontend de Wallet Digital: sesion y tema, menu superior, campana de alertas,
+ *   login/registro/recuperacion, panel principal, perfil, transferencias, movimientos, modulo Forex y simulador.
+ * Como lo hace: un unico script que se carga en todas las vistas. Al terminar de cargar el DOM,
+ *   iniciar_aplicacion() detecta la pagina actual por el nombre del archivo y ejecuta solo la inicializacion que
+ *   le corresponde. El estado compartido vive en el objeto `estado_aplicacion`; la preferencia de tema y el
+ *   token de sesion se guardan en localStorage.
+ * Datos que participan: token Bearer (localStorage 'wallet_api_token'), tema (localStorage 'wallet_theme'),
+ *   `estado_aplicacion`, el DOM de cada vista y las respuestas JSON de la API.
+ * Consultas (API/SQL): el navegador nunca habla con la base de datos; todo pasa por consumir_api() hacia
+ *   /api/*, y es el backend quien ejecuta el SQL (ver carpeta backend).
+ */
+
 const CLAVE_TOKEN_SESION = "wallet_api_token";
 const CLAVE_TEMA = "wallet_theme";
 const PAGINAS_PRIVADAS = new Set([
@@ -65,6 +80,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
+/**
+ * Funcion: iniciar_aplicacion
+ *
+ * Que hace: arranca la aplicacion en cualquier vista.
+ * Como lo hace: prepara menu, tema, menu responsive, campana de alertas y accesos de cuenta; si la pagina es
+ *   privada valida la sesion (y corta si no es valida); despues llama a la inicializacion propia de la pagina
+ *   (login, principal, perfil, operaciones, movimientos, portal Forex o simulador) y por ultimo redibuja los
+ *   graficos.
+ * Datos que participan: nombre de la pagina actual, PAGINAS_PRIVADAS, `estado_aplicacion`.
+ * Consultas (API/SQL): indirectas, segun la pagina (GET /api/auth/session en vistas privadas).
+ * Retorna: Promise<void>.
+ */
 async function iniciar_aplicacion() {
     normalizar_menu_superior();
     inicializar_tema();
@@ -113,19 +140,55 @@ async function iniciar_aplicacion() {
     redibujar_graficos();
 }
 
+/**
+ * Funcion: obtener_pagina_actual
+ *
+ * Que hace: devuelve el nombre del archivo de la vista abierta.
+ * Como lo hace: toma el ultimo segmento de window.location.pathname; si esta vacio asume login.html.
+ * Datos que participan: window.location.pathname.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string (ej. 'principal.html').
+ */
 function obtener_pagina_actual() {
     const partes = window.location.pathname.split("/");
     return partes[partes.length - 1] || "login.html";
 }
 
+/**
+ * Funcion: obtener_token_sesion
+ *
+ * Que hace: lee el token Bearer guardado.
+ * Como lo hace: localStorage.getItem con la clave 'wallet_api_token'.
+ * Datos que participan: localStorage.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string, o '' si no hay sesion.
+ */
 function obtener_token_sesion() {
     return localStorage.getItem(CLAVE_TOKEN_SESION) || "";
 }
 
+/**
+ * Funcion: guardar_token_sesion
+ *
+ * Que hace: guarda el token que devolvio el login.
+ * Como lo hace: localStorage.setItem.
+ * Datos que participan: `token`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_token_sesion(token) {
     localStorage.setItem(CLAVE_TOKEN_SESION, token);
 }
 
+/**
+ * Funcion: limpiar_sesion_local
+ *
+ * Que hace: borra todo rastro de la sesion en el navegador.
+ * Como lo hace: elimina el token de localStorage, vacia perfilActual y sesion del estado y refresca el menu.
+ * Datos que participan: localStorage, `estado_aplicacion`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function limpiar_sesion_local() {
     localStorage.removeItem(CLAVE_TOKEN_SESION);
     estado_aplicacion.perfilActual = null;
@@ -133,21 +196,59 @@ function limpiar_sesion_local() {
     sincronizar_interfaz_sesion();
 }
 
+/**
+ * Funcion: cargar_preferencia_tema
+ *
+ * Que hace: lee el tema elegido (claro u oscuro).
+ * Como lo hace: devuelve 'dark' solo si ese es el valor guardado; cualquier otro caso es 'light'.
+ * Datos que participan: localStorage 'wallet_theme'.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: 'light' | 'dark'.
+ */
 function cargar_preferencia_tema() {
     const temaGuardado = localStorage.getItem(CLAVE_TEMA);
     return temaGuardado === "dark" ? "dark" : "light";
 }
 
+/**
+ * Funcion: guardar_preferencia_tema
+ *
+ * Que hace: persiste el tema elegido.
+ * Como lo hace: localStorage.setItem.
+ * Datos que participan: `tema`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_preferencia_tema(tema) {
     localStorage.setItem(CLAVE_TEMA, tema);
 }
 
+/**
+ * Funcion: aplicar_tema
+ *
+ * Que hace: aplica el tema a toda la pagina.
+ * Como lo hace: normaliza el valor, lo guarda en el estado y escribe data-theme en <html>, que activa las
+ *   variables CSS del tema.
+ * Datos que participan: `tema`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_tema(tema) {
     const temaNormalizado = tema === "dark" ? "dark" : "light";
     estado_aplicacion.tema = temaNormalizado;
     document.documentElement.dataset.theme = temaNormalizado;
 }
 
+/**
+ * Funcion: alternar_tema
+ *
+ * Que hace: cambia entre modo claro y oscuro.
+ * Como lo hace: calcula el tema contrario, lo aplica, lo guarda, actualiza el texto del boton y redibuja los
+ *   graficos con los colores nuevos.
+ * Datos que participan: `estado_aplicacion.tema`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function alternar_tema() {
     const siguienteTema = estado_aplicacion.tema === "dark" ? "light" : "dark";
     aplicar_tema(siguienteTema);
@@ -156,10 +257,29 @@ function alternar_tema() {
     redibujar_graficos();
 }
 
+/**
+ * Funcion: inicializar_tema
+ *
+ * Que hace: deja listos los controles de tema.
+ * Como lo hace: delega en renderizar_controles_superiores.
+ * Datos que participan: DOM de la barra superior.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_tema() {
     renderizar_controles_superiores();
 }
 
+/**
+ * Funcion: actualizar_boton_tema
+ *
+ * Que hace: sincroniza etiqueta y accesibilidad de todos los botones de tema.
+ * Como lo hace: recorre los elementos [data-accion-tema] y actualiza aria-label, title, aria-pressed y el
+ *   texto interno.
+ * Datos que participan: `estado_aplicacion.tema`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function actualizar_boton_tema() {
     const etiqueta = estado_aplicacion.tema === "light"
         ? "Cambiar a modo oscuro"
@@ -176,6 +296,17 @@ function actualizar_boton_tema() {
     });
 }
 
+/**
+ * Funcion: renderizar_controles_superiores
+ *
+ * Que hace: dibuja en la barra superior el boton de tema o, con sesion activa en una pagina privada, el menu
+ *   de usuario.
+ * Como lo hace: elimina los controles previos para no duplicarlos; con sesion crea avatar, submenu
+ *   (configuracion, tema, cerrar sesion) y sus eventos; sin sesion crea solo el boton de tema.
+ * Datos que participan: token, `estado_aplicacion.sesion`, usuario actual (nombre, correo, foto).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_controles_superiores() {
     const contenedorAlertas = document.querySelector(".contenedor_alertas");
     if (!contenedorAlertas) {
@@ -255,6 +386,15 @@ function renderizar_controles_superiores() {
     actualizar_boton_tema();
 }
 
+/**
+ * Funcion: construir_boton_tema_submenu
+ *
+ * Que hace: arma el HTML del boton de tema dentro del submenu de usuario.
+ * Como lo hace: concatena un <button> con icono de sol y un span para la etiqueta.
+ * Datos que participan: ninguno.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string HTML.
+ */
 function construir_boton_tema_submenu() {
     return [
         '<button type="button" class="item_submenu_usuario" data-accion-tema="true">',
@@ -264,6 +404,16 @@ function construir_boton_tema_submenu() {
     ].join("");
 }
 
+/**
+ * Funcion: construir_avatar_superior
+ *
+ * Que hace: arma el avatar de la barra superior.
+ * Como lo hace: si el usuario tiene foto muestra la imagen; si no, sus iniciales. El contenido se escapa con
+ *   escapar_html.
+ * Datos que participan: `usuario` (fotoPerfilUrl, nombres, apellidos).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string HTML.
+ */
 function construir_avatar_superior(usuario) {
     if (usuario?.fotoPerfilUrl) {
         return `<img class="avatar_superior_imagen" src="${escapar_html(usuario.fotoPerfilUrl)}" alt="Foto de perfil">`;
@@ -272,6 +422,16 @@ function construir_avatar_superior(usuario) {
     return `<span class="avatar_superior_iniciales">${escapar_html(obtener_iniciales_usuario(usuario))}</span>`;
 }
 
+/**
+ * Funcion: inicializar_cierre_submenu_usuario
+ *
+ * Que hace: cierra el submenu de usuario al hacer clic fuera.
+ * Como lo hace: registra un unico listener global (marcado con data-menu-usuario-inicializado) que cierra los
+ *   submenus abiertos cuando el clic no cae dentro de su contenedor.
+ * Datos que participan: DOM.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_cierre_submenu_usuario() {
     if (document.body.dataset.menuUsuarioInicializado) {
         return;
@@ -293,30 +453,81 @@ function inicializar_cierre_submenu_usuario() {
     document.body.dataset.menuUsuarioInicializado = "true";
 }
 
+/**
+ * Funcion: icono_sol_svg
+ *
+ * Que hace: devuelve el icono SVG de sol/tema.
+ * Como lo hace: plantilla con la clase CSS opcional.
+ * Datos que participan: `claseExtra`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string SVG.
+ */
 function icono_sol_svg(claseExtra) {
     return `<svg class="${claseExtra || ""}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"></circle><path d="M12 2.5v2.3"></path><path d="M12 19.2v2.3"></path><path d="M4.9 4.9l1.6 1.6"></path><path d="M17.5 17.5l1.6 1.6"></path><path d="M2.5 12h2.3"></path><path d="M19.2 12h2.3"></path><path d="M4.9 19.1l1.6-1.6"></path><path d="M17.5 6.5l1.6-1.6"></path></svg>`;
 }
 
+/**
+ * Funcion: icono_configuracion_svg
+ *
+ * Que hace: devuelve el icono SVG de engranaje.
+ * Como lo hace: plantilla con la clase CSS opcional.
+ * Datos que participan: `claseExtra`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string SVG.
+ */
 function icono_configuracion_svg(claseExtra) {
     return `<svg class="${claseExtra || ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"></path><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.2 1.2a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.7a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.3 18a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3.5a1 1 0 0 1-1-1v-1.7a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4L5.5 4a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V3.2a1 1 0 0 1 1-1h1.7a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.2 1.2a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a1 1 0 0 1 1 1v1.7a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6z"></path></svg>`;
 }
 
+/**
+ * Funcion: icono_salida_svg
+ *
+ * Que hace: devuelve el icono SVG de salida.
+ * Como lo hace: plantilla con la clase CSS opcional.
+ * Datos que participan: `claseExtra`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string SVG.
+ */
 function icono_salida_svg(claseExtra) {
     return `<svg class="${claseExtra || ""}" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path></svg>`;
 }
 
+/**
+ * Funcion: es_pagina_privada
+ *
+ * Que hace: indica si la vista actual exige sesion.
+ * Como lo hace: comprueba si el nombre de la pagina esta en PAGINAS_PRIVADAS.
+ * Datos que participan: pagina actual.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: boolean.
+ */
 function es_pagina_privada() {
     return PAGINAS_PRIVADAS.has(obtener_pagina_actual());
 }
 
+/**
+ * Funcion: obtener_usuario_actual
+ *
+ * Que hace: devuelve el usuario en memoria.
+ * Como lo hace: prefiere perfilActual (mas reciente tras editar el perfil) y si no, el usuario de la sesion.
+ * Datos que participan: `estado_aplicacion`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: objeto usuario o null.
+ */
 function obtener_usuario_actual() {
     return estado_aplicacion.perfilActual || estado_aplicacion.sesion?.user || null;
 }
 
-// Funcion: mostrar_toast_lateral
-// Aqui entra SweetAlert2 en modo toast.
-// Esta funcion no toca backend ni base de datos; solo pinta una notificacion
-// visual discreta al costado usando window.Swal.fire(...).
+/**
+ * Funcion: mostrar_toast_lateral
+ *
+ * Que hace: muestra una notificacion discreta en la esquina (SweetAlert2 en modo toast).
+ * Como lo hace: elige el icono segun el tipo (error, exito o info) y usa window.Swal.fire con temporizador
+ *   (3,6 s para errores, 2,4 s en el resto).
+ * Datos que participan: `texto`, `tipo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function mostrar_toast_lateral(texto, tipo) {
     if (!texto || !window.Swal) return;
 
@@ -340,10 +551,16 @@ function mostrar_toast_lateral(texto, tipo) {
     });
 }
 
-// Funcion: confirmar_accion
-// Aqui ejecuto SweetAlert2 en modo modal de confirmacion.
-// La uso antes de operaciones sensibles como transferir, pagar o cerrar sesion.
-// Devuelvo true o false para que el flujo del submit sepa si debe continuar.
+/**
+ * Funcion: confirmar_accion
+ *
+ * Que hace: pide confirmacion antes de operaciones sensibles (transferir, pagar, cerrar sesion).
+ * Como lo hace: abre un modal de SweetAlert2 con los colores del tema; si SweetAlert2 no esta disponible usa
+ *   window.confirm.
+ * Datos que participan: { titulo, texto, botonConfirmar, icono }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: Promise<boolean>: true si el usuario confirmo.
+ */
 async function confirmar_accion({ titulo, texto, botonConfirmar, icono }) {
     if (!window.Swal) {
         return window.confirm(texto || titulo || "Confirma esta accion.");
@@ -364,15 +581,18 @@ async function confirmar_accion({ titulo, texto, botonConfirmar, icono }) {
     return Boolean(respuesta.isConfirmed);
 }
 
-// Funcion: consumir_api
-// Aqui vive la salida principal del frontend hacia el backend.
-// Todo CRUD del navegador pasa por este punto: crear, leer, actualizar o eliminar.
-// Esta funcion:
-// 1. agrega el token Bearer si existe
-// 2. convierte el body a JSON
-// 3. ejecuta fetch() a /api/...
-// 4. interpreta la respuesta JSON
-// 5. si el backend devuelve 401, limpia sesion y redirige al login
+/**
+ * Funcion: consumir_api
+ *
+ * Que hace: es la unica salida del frontend hacia el backend; todo crear, leer, actualizar o eliminar pasa por
+ *   aqui.
+ * Como lo hace: agrega el header Authorization: Bearer si hay token (salvo omitirAutorizacion), serializa el
+ *   body a JSON, ejecuta fetch, interpreta la respuesta y, si el servidor responde 401, limpia la sesion y
+ *   redirige al login con ?sesion=expirada. Si la respuesta no es ok lanza Error con el mensaje del servidor.
+ * Datos que participan: `ruta` (/api/...), `opciones` { method, body, headers, omitirAutorizacion }.
+ * Consultas (API/SQL): cualquier endpoint /api/*.
+ * Retorna: Promise con el JSON de la respuesta.
+ */
 async function consumir_api(ruta, opciones) {
     const configuracion = { method: "GET", headers: {}, ...opciones };
     const token = obtener_token_sesion();
@@ -409,6 +629,16 @@ async function consumir_api(ruta, opciones) {
     return datos;
 }
 
+/**
+ * Funcion: obtener_sesion
+ *
+ * Que hace: obtiene la sesion viva del usuario, con cache en memoria.
+ * Como lo hace: devuelve la sesion guardada salvo que se pida `forzar`; si no hay token lanza error; si lo hay
+ *   consulta al servidor y actualiza perfilActual y sesion.
+ * Datos que participan: `forzar` (boolean), token.
+ * Consultas (API/SQL): GET /api/auth/session (backend: usuario, 5 alertas recientes y contador de no leidas).
+ * Retorna: Promise con { user, alerts, unreadAlerts }.
+ */
 async function obtener_sesion(forzar) {
     if (!forzar && estado_aplicacion.sesion) {
         return estado_aplicacion.sesion;
@@ -426,6 +656,16 @@ async function obtener_sesion(forzar) {
     return sesion;
 }
 
+/**
+ * Funcion: preparar_vista_privada
+ *
+ * Que hace: valida el acceso a una vista privada y pinta la campana.
+ * Como lo hace: intenta obtener la sesion; si funciona renderiza alertas; si falla limpia la sesion y redirige
+ *   a login.html?sesion=expirada.
+ * Datos que participan: sesion.
+ * Consultas (API/SQL): GET /api/auth/session (via obtener_sesion).
+ * Retorna: Promise<boolean>: true si el acceso es valido.
+ */
 async function preparar_vista_privada() {
     try {
         const sesion = await obtener_sesion(false);
@@ -439,11 +679,31 @@ async function preparar_vista_privada() {
     }
 }
 
+/**
+ * Funcion: sincronizar_interfaz_sesion
+ *
+ * Que hace: refresca todo lo que depende de si hay sesion.
+ * Como lo hace: reconstruye el menu superior y los controles de usuario.
+ * Datos que participan: estado de sesion.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function sincronizar_interfaz_sesion() {
     normalizar_menu_superior();
     inicializar_boton_cerrar_sesion();
 }
 
+/**
+ * Funcion: normalizar_menu_superior
+ *
+ * Que hace: construye el menu de navegacion segun haya sesion o no.
+ * Como lo hace: con sesion arma Wallet, Transferencias, Movimientos, el submenu 'Modulo Forex' y el Simulador,
+ *   marcando el enlace activo; sin sesion oculta menu y boton hamburguesa. Registra una sola vez el listener que
+ *   cierra los submenus al hacer clic fuera.
+ * Datos que participan: pagina actual, token, `estado_aplicacion.sesion`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function normalizar_menu_superior() {
     const menu = document.getElementById("menu_superior");
     if (!menu) return;
@@ -468,10 +728,10 @@ function normalizar_menu_superior() {
             },
             { href: "simulador_inversion.html", label: "Simulador Forex" }
         ]
-        : [
-            { href: "login.html", label: "Login" }
-        ];
+        : [];
 
+    // Sin sesion no hay a donde navegar: oculto el menu y el boton hamburguesa.
+    document.querySelector(".barra_superior")?.classList.toggle("barra_sin_menu", enlaces.length === 0);
     menu.innerHTML = "";
 
     enlaces.forEach(function (enlaceDefinido) {
@@ -527,10 +787,29 @@ function normalizar_menu_superior() {
     }
 }
 
+/**
+ * Funcion: inicializar_boton_cerrar_sesion
+ *
+ * Que hace: asegura que exista el control de cerrar sesion.
+ * Como lo hace: delega en renderizar_controles_superiores.
+ * Datos que participan: DOM.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_boton_cerrar_sesion() {
     renderizar_controles_superiores();
 }
 
+/**
+ * Funcion: cerrar_sesion
+ *
+ * Que hace: cierra la sesion del usuario en este navegador.
+ * Como lo hace: pide confirmacion, limpia la sesion local y redirige a login.html?sesion=cerrada. El token es
+ *   sin estado en el servidor, por eso no hay llamada al backend.
+ * Datos que participan: token.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: Promise<void>.
+ */
 async function cerrar_sesion() {
     const confirmar = await confirmar_accion({
         titulo: "Cerrar sesion",
@@ -547,6 +826,15 @@ async function cerrar_sesion() {
     window.location.href = "login.html?sesion=cerrada";
 }
 
+/**
+ * Funcion: inicializar_menu_responsive
+ *
+ * Que hace: activa el boton hamburguesa del menu en pantallas pequenas.
+ * Como lo hace: alterna la clase menu_abierto del menu y actualiza aria-expanded.
+ * Datos que participan: #boton_menu y #menu_superior.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_menu_responsive() {
     const boton_menu = document.getElementById("boton_menu");
     const menu_superior = document.getElementById("menu_superior");
@@ -557,6 +845,16 @@ function inicializar_menu_responsive() {
     });
 }
 
+/**
+ * Funcion: sincronizar_picker_color_ahorro
+ *
+ * Que hace: mantiene visible el codigo hexadecimal del color elegido para un bolsillo de ahorro.
+ * Como lo hace: escribe el valor de #ahorro_color en #texto_color_ahorro y registra el listener 'input' una
+ *   sola vez.
+ * Datos que participan: #ahorro_color, #texto_color_ahorro.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function sincronizar_picker_color_ahorro() {
     const inputColor = document.getElementById("ahorro_color");
     const textoColor = document.getElementById("texto_color_ahorro");
@@ -576,6 +874,17 @@ function sincronizar_picker_color_ahorro() {
     actualizar();
 }
 
+/**
+ * Funcion: inicializar_campana_alertas
+ *
+ * Que hace: da vida a la campana de alertas.
+ * Como lo hace: abre/cierra el panel al hacer clic (al abrirlo marca las alertas como vistas), delega el clic
+ *   en el boton eliminar de cada alerta y cierra el panel al hacer clic fuera. Usa banderas data-inicializado
+ *   para no duplicar listeners.
+ * Datos que participan: #boton_alertas, #panel_alertas.
+ * Consultas (API/SQL): indirectas: POST /api/alerts/mark-read y POST /api/alerts/delete.
+ * Retorna: nada.
+ */
 function inicializar_campana_alertas() {
     const boton = document.getElementById("boton_alertas");
     const panel = document.getElementById("panel_alertas");
@@ -622,6 +931,16 @@ function inicializar_campana_alertas() {
     }
 }
 
+/**
+ * Funcion: sincronizar_alertas_en_estado
+ *
+ * Que hace: guarda en memoria las alertas recibidas y repinta la campana.
+ * Como lo hace: actualiza estado_aplicacion.sesion.alerts y unreadAlerts y llama a
+ *   renderizar_panel_alertas_superior.
+ * Datos que participan: `respuesta` { alerts, unreadAlerts }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function sincronizar_alertas_en_estado(respuesta) {
     const alerts = respuesta?.alerts || [];
     const unreadAlerts = Number(respuesta?.unreadAlerts || 0);
@@ -635,6 +954,15 @@ function sincronizar_alertas_en_estado(respuesta) {
     renderizar_panel_alertas_superior(alerts, unreadAlerts);
 }
 
+/**
+ * Funcion: cargar_alertas_desde_servidor
+ *
+ * Que hace: recarga las alertas desde el backend.
+ * Como lo hace: sin token vacia la campana; con token consulta la API y sincroniza el estado.
+ * Datos que participan: token.
+ * Consultas (API/SQL): GET /api/alerts (backend: ultimas 20 alertas del usuario y contador de no leidas).
+ * Retorna: Promise con { alerts, unreadAlerts }.
+ */
 async function cargar_alertas_desde_servidor() {
     if (!obtener_token_sesion()) {
         sincronizar_alertas_en_estado({
@@ -652,6 +980,16 @@ async function cargar_alertas_desde_servidor() {
     return respuesta;
 }
 
+/**
+ * Funcion: marcar_alertas_como_vistas
+ *
+ * Que hace: marca como leidas las alertas pendientes.
+ * Como lo hace: solo actua si hay token y hay no leidas; despues recarga la lista.
+ * Datos que participan: `unreadAlerts`.
+ * Consultas (API/SQL): POST /api/alerts/mark-read (backend: UPDATE alertas_usuario SET leida = TRUE WHERE
+ *   usuario_id = $1 AND leida = FALSE).
+ * Retorna: Promise<void>.
+ */
 async function marcar_alertas_como_vistas() {
     if (!obtener_token_sesion() || !Number(estado_aplicacion.sesion?.unreadAlerts || 0)) {
         return;
@@ -664,6 +1002,17 @@ async function marcar_alertas_como_vistas() {
     await cargar_alertas_desde_servidor();
 }
 
+/**
+ * Funcion: eliminar_alerta_desde_panel
+ *
+ * Que hace: elimina una alerta puntual desde la campana.
+ * Como lo hace: deshabilita el boton mientras trabaja, llama a la API, recarga las alertas y, ante error,
+ *   muestra un toast; siempre rehabilita el boton.
+ * Datos que participan: `alertId`, `botonActivo`.
+ * Consultas (API/SQL): POST /api/alerts/delete (backend: DELETE FROM alertas_usuario WHERE id_alerta = $1 AND
+ *   usuario_id = $2).
+ * Retorna: Promise<void>.
+ */
 async function eliminar_alerta_desde_panel(alertId, botonActivo) {
     if (!alertId) {
         return;
@@ -690,6 +1039,17 @@ async function eliminar_alerta_desde_panel(alertId, botonActivo) {
     }
 }
 
+/**
+ * Funcion: inicializar_accesos_cuenta
+ *
+ * Que hace: controla el bloque de saldo y los atajos (iconos) que abren paneles del panel principal.
+ * Como lo hace: al hacer clic o pulsar Enter/Espacio en el bloque de saldo alterna la visibilidad de los
+ *   atajos; cada atajo activa su panel (data-panel) y desactiva los demas; el boton de cerrar oculta todo.
+ *   Define internamente alternar().
+ * Datos que participan: #bloque_saldo_toggle, #contenedor_atajos_cuenta, .atajo_icono, .panel_icono.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_accesos_cuenta() {
     const bloque = document.getElementById("bloque_saldo_toggle");
     const contenedor = document.getElementById("contenedor_atajos_cuenta");
@@ -747,6 +1107,16 @@ function inicializar_accesos_cuenta() {
     }
 }
 
+/**
+ * Funcion: desplazar_hacia_bloque
+ *
+ * Que hace: lleva la vista hacia un elemento con desplazamiento suave.
+ * Como lo hace: usa requestAnimationFrame para esperar al repintado y llama a scrollIntoView({ behavior:
+ *   'smooth', block: 'start' }).
+ * Datos que participan: `elemento`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function desplazar_hacia_bloque(elemento) {
     if (!elemento) return;
 
@@ -758,6 +1128,16 @@ function desplazar_hacia_bloque(elemento) {
     });
 }
 
+/**
+ * Funcion: aplicar_iconos_atajo_wallet
+ *
+ * Que hace: pinta el icono SVG de cada atajo del panel de la wallet.
+ * Como lo hace: tiene un mapa panel -> SVG y lo inserta en .simbolo_atajo una sola vez (bandera
+ *   data-icono-aplicado).
+ * Datos que participan: .atajo_icono[data-panel].
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_iconos_atajo_wallet() {
     const iconos = {
         panel_movimientos: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"></path><path d="M7 16V8"></path><path d="M12 16V5"></path><path d="M17 16v-4"></path></svg>',
@@ -782,14 +1162,31 @@ function aplicar_iconos_atajo_wallet() {
     });
 }
 
-// Funcion: obtener_prefijo_telefono_por_defecto
-// Aqui fijo el prefijo base de la interfaz para que el registro arranque listo para El Salvador.
+/**
+ * Funcion: obtener_prefijo_telefono_por_defecto
+ *
+ * Que hace: fija el prefijo base de la interfaz para que el registro arranque listo para El Salvador.
+ * Como lo hace: devuelve el primer elemento de PREFIJOS_TELEFONICOS (+503).
+ * Datos que participan: PREFIJOS_TELEFONICOS.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string, ej. '+503'.
+ */
 function obtener_prefijo_telefono_por_defecto() {
     return PREFIJOS_TELEFONICOS[0]?.codigo || "+503";
 }
 
-// Funcion: poblar_selector_prefijo_telefono
-// Aqui cargo el listado de paises en el selector y actualizo el ejemplo del numero local segun el prefijo elegido.
+/**
+ * Funcion: poblar_selector_prefijo_telefono
+ *
+ * Que hace: carga la lista de paises en el selector y actualiza el ejemplo del numero local segun el prefijo
+ *   elegido.
+ * Como lo hace: crea las <option> con bandera y codigo una sola vez; en cada cambio actualiza title,
+ *   aria-label y el placeholder del input con el numero de ejemplo del pais; deja seleccionado el prefijo
+ *   inicial.
+ * Datos que participan: `selector`, `inputId`, `prefijoInicial`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function poblar_selector_prefijo_telefono(selector, inputId, prefijoInicial) {
     if (!selector) {
         return;
@@ -823,8 +1220,16 @@ function poblar_selector_prefijo_telefono(selector, inputId, prefijoInicial) {
     selector.dispatchEvent(new Event("change"));
 }
 
-// Funcion: descomponer_telefono_internacional
-// Aqui separo un telefono ya guardado en prefijo y numero local para volver a pintarlo en la interfaz.
+/**
+ * Funcion: descomponer_telefono_internacional
+ *
+ * Que hace: separa un telefono ya guardado en prefijo y numero local para volver a pintarlo en la interfaz.
+ * Como lo hace: ordena los prefijos de mayor a menor longitud (para que +503 gane a +5), normaliza el telefono
+ *   a '+digitos' y busca el prefijo que coincida; si no hay coincidencia usa el prefijo por defecto.
+ * Datos que participan: `valor` (telefono completo).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: { prefijo, numeroLocal }.
+ */
 function descomponer_telefono_internacional(valor) {
     const telefono = normalizar_telefono_visual(valor).trim();
     const catalogoOrdenado = [...PREFIJOS_TELEFONICOS].sort(function (a, b) {
@@ -859,8 +1264,15 @@ function descomponer_telefono_internacional(valor) {
     };
 }
 
-// Funcion: rellenar_telefono_en_campos
-// Aqui tomo el telefono persistido y lo reparto entre el selector de pais y el input del numero local.
+/**
+ * Funcion: rellenar_telefono_en_campos
+ *
+ * Que hace: reparte el telefono guardado entre el selector de pais y el input del numero local.
+ * Como lo hace: descompone el telefono, puebla el selector con su prefijo y escribe el numero local.
+ * Datos que participan: `selectorId`, `inputId`, `telefonoCompleto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function rellenar_telefono_en_campos(selectorId, inputId, telefonoCompleto) {
     const selector = document.getElementById(selectorId);
     const input = document.getElementById(inputId);
@@ -873,8 +1285,16 @@ function rellenar_telefono_en_campos(selectorId, inputId, telefonoCompleto) {
     }
 }
 
-// Funcion: construir_telefono_desde_campos
-// Aqui uno prefijo y numero local para enviarlos al backend como un telefono internacional valido.
+/**
+ * Funcion: construir_telefono_desde_campos
+ *
+ * Que hace: une prefijo y numero local para enviarlos al backend como telefono internacional valido.
+ * Como lo hace: normaliza el numero local, lanza error si es obligatorio y esta vacio y valida el resultado
+ *   completo con validar_telefono_frontend.
+ * Datos que participan: `selectorId`, `inputId`, `requerido`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string con el telefono validado, o '' si es opcional y esta vacio.
+ */
 function construir_telefono_desde_campos(selectorId, inputId, requerido) {
     const selector = document.getElementById(selectorId);
     const input = document.getElementById(inputId);
@@ -903,6 +1323,20 @@ function construir_telefono_desde_campos(selectorId, inputId, requerido) {
     return validar_telefono_frontend(`${prefijo}${numeroLocal}`);
 }
 
+/**
+ * Funcion: inicializar_login
+ *
+ * Que hace: prepara toda la pantalla de acceso: login, registro, recuperacion de contrasena y activacion por
+ *   PIN.
+ * Como lo hace: si ya hay un token valido redirige a principal.html; consulta el estado inicial (si la base
+ *   esta vacia obliga al registro); engancha los botones de modo, aplica formatos de telefono y DUI y registra
+ *   el submit de cada formulario con sus validaciones del lado del cliente.
+ * Datos que participan: formularios de la vista, parametros de la URL (modo, correo, pin).
+ * Consultas (API/SQL): GET /api/auth/session (si hay token); GET /api/auth/bootstrap (backend: SELECT COUNT(*)
+ *   FROM usuarios); POST /api/auth/login; POST /api/auth/register; POST /api/auth/password-reset/request; POST
+ *   /api/auth/password-reset/confirm.
+ * Retorna: Promise<void>.
+ */
 async function inicializar_login() {
     const formularioLogin = document.getElementById("formulario_login");
     const formularioRegistro = document.getElementById("formulario_registro");
@@ -938,6 +1372,7 @@ async function inicializar_login() {
 
     inicializar_modales_wallet();
     inicializar_activacion_registro_modal(formularioActivacionRegistro, botonReenviarPinRegistro);
+    inicializar_doble_factor_login();
 
     document.querySelectorAll("[data-modo-acceso]").forEach(function (boton) {
         boton.addEventListener("click", function () {
@@ -985,6 +1420,12 @@ async function inicializar_login() {
                     password: contrasena
                 }
             });
+
+            if (respuesta.requiresTwoFactor) {
+                abrir_modal_doble_factor(respuesta);
+                mostrar_mensaje("mensaje_login", "Contrasena correcta. Falta el codigo de verificacion.", "info");
+                return;
+            }
 
             guardar_sesion_desde_respuesta(respuesta);
             mostrar_mensaje("mensaje_login", "Acceso correcto. Redirigiendo...", "exito");
@@ -1144,6 +1585,16 @@ async function inicializar_login() {
     });
 }
 
+/**
+ * Funcion: aplicar_estado_bootstrap_login
+ *
+ * Que hace: adapta el login cuando la base de datos no tiene usuarios.
+ * Como lo hace: si requiresRegistration es true deshabilita el modo login, abre el registro, muestra el aviso
+ *   de base vacia una sola vez y oculta los enlaces de recuperacion; si no, restablece todo.
+ * Datos que participan: `bootstrap` { totalUsers, hasUsers, requiresRegistration }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_estado_bootstrap_login(bootstrap) {
     const botonLogin = document.querySelector('[data-modo-acceso="login"]');
     const botonRegistro = document.querySelector('[data-modo-acceso="registro"]');
@@ -1200,10 +1651,15 @@ function aplicar_estado_bootstrap_login(bootstrap) {
     }
 }
 
-// Funcion: mostrar_aviso_base_vacia
-// Aqui muestro una notificacion inicial cuando la web detecta que no hay
-// usuarios registrados. La interfaz ya cambia al panel de registro, pero
-// este aviso deja claro por que sucedio desde el momento en que abre la pagina.
+/**
+ * Funcion: mostrar_aviso_base_vacia
+ *
+ * Que hace: muestra la notificacion inicial cuando la web detecta que no hay usuarios registrados.
+ * Como lo hace: usa un modal de SweetAlert2 o, si no esta disponible, un toast.
+ * Datos que participan: ninguno.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function mostrar_aviso_base_vacia() {
     const titulo = "No hay usuarios registrados";
     const texto = "La base esta vacia. Te llevamos directo al registro para crear la primera cuenta.";
@@ -1224,6 +1680,16 @@ function mostrar_aviso_base_vacia() {
     mostrar_toast_lateral(texto, "info");
 }
 
+/**
+ * Funcion: inicializar_flujo_pin_recuperacion
+ *
+ * Que hace: obliga a revalidar el PIN cada vez que se edita el correo o el PIN.
+ * Como lo hace: registra un listener 'input' en #reset_correo y #reset_pin que bloquea los campos de
+ *   contrasena nueva, y deja el bloque bloqueado desde el inicio.
+ * Datos que participan: #reset_correo, #reset_pin.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_flujo_pin_recuperacion() {
     ["reset_correo", "reset_pin"].forEach(function (idCampo) {
         const campo = document.getElementById(idCampo);
@@ -1238,6 +1704,15 @@ function inicializar_flujo_pin_recuperacion() {
     bloquear_cambio_password_reset(false);
 }
 
+/**
+ * Funcion: preparar_panel_reset
+ *
+ * Que hace: precarga correo y PIN en el panel de restablecimiento.
+ * Como lo hace: escribe los valores en los campos y bloquea el cambio de contrasena hasta validar el PIN.
+ * Datos que participan: `correo`, `pin`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function preparar_panel_reset(correo, pin) {
     if (correo) {
         establecer_valor("reset_correo", correo);
@@ -1251,24 +1726,45 @@ function preparar_panel_reset(correo, pin) {
     bloquear_cambio_password_reset(true);
 }
 
-// Funcion: clean_pin_visual
-// Aqui limpio el PIN para dejarlo solo numerico antes de enviarlo al backend.
+/**
+ * Funcion: clean_pin_visual
+ *
+ * Que hace: limpia el PIN para dejarlo solo numerico antes de enviarlo al backend.
+ * Como lo hace: quita todo lo que no sea digito y limita a 6 caracteres.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string de hasta 6 digitos.
+ */
 function clean_pin_visual(valor) {
     return String(valor || "").replace(/\D/g, "").slice(0, 6);
 }
 
-// Funcion: preparar_modal_activacion_registro
-// Aqui precargo el correo y el PIN dentro del modal de activacion.
-// Lo reutilizo tanto al terminar el registro como cuando el usuario aterriza desde el enlace del correo.
+/**
+ * Funcion: preparar_modal_activacion_registro
+ *
+ * Que hace: precarga correo y PIN dentro del modal de activacion; se reutiliza al terminar el registro y
+ *   cuando el usuario llega desde el enlace del correo.
+ * Como lo hace: escribe ambos valores en los campos del modal (el PIN pasa por clean_pin_visual).
+ * Datos que participan: `correo`, `pin`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function preparar_modal_activacion_registro(correo, pin) {
     establecer_valor("activacion_registro_correo", correo || "");
     establecer_valor("activacion_registro_pin", clean_pin_visual(pin));
 }
 
-// Funcion: verificar_activacion_registro
-// Este es el submit real de activacion:
-// toma correo y PIN desde el modal, llama POST /api/auth/register/verify
-// y si todo sale bien guarda la sesion devuelta por el backend.
+/**
+ * Funcion: verificar_activacion_registro
+ *
+ * Que hace: es el submit real de activacion de cuenta.
+ * Como lo hace: toma correo y PIN del modal (o de `opciones`), los valida, llama a la API, guarda la sesion
+ *   devuelta, cierra el modal, limpia la URL y redirige a principal.html.
+ * Datos que participan: `opciones` { correo, pin, automatico }.
+ * Consultas (API/SQL): POST /api/auth/register/verify (backend: valida PIN con FOR UPDATE, UPDATE usuarios SET
+ *   estado = 'activo', consume codigos_verificacion y devuelve sesion).
+ * Retorna: Promise con la respuesta del servidor.
+ */
 async function verificar_activacion_registro(opciones = {}) {
     const correo = validar_correo_frontend(opciones.correo || obtener_valor("activacion_registro_correo"));
     const pin = clean_pin_visual(opciones.pin || obtener_valor("activacion_registro_pin"));
@@ -1300,8 +1796,16 @@ async function verificar_activacion_registro(opciones = {}) {
     return respuesta;
 }
 
-// Funcion: reenviar_pin_activacion_registro
-// Aqui disparo otro correo de activacion para una cuenta aun pendiente.
+/**
+ * Funcion: reenviar_pin_activacion_registro
+ *
+ * Que hace: dispara otro correo de activacion para una cuenta aun pendiente.
+ * Como lo hace: valida el correo, llama a la API y, en modo preview, carga el PIN temporal en el modal.
+ * Datos que participan: #activacion_registro_correo.
+ * Consultas (API/SQL): POST /api/auth/register/resend (backend: anula codigos vigentes e INSERT en
+ *   codigos_verificacion).
+ * Retorna: Promise<void>.
+ */
 async function reenviar_pin_activacion_registro() {
     const correo = validar_correo_frontend(obtener_valor("activacion_registro_correo"));
     mostrar_mensaje("mensaje_activacion_registro", "Reenviando PIN de activacion...", "info");
@@ -1327,9 +1831,16 @@ async function reenviar_pin_activacion_registro() {
     );
 }
 
-// Funcion: inicializar_activacion_registro_modal
-// Aqui engancho las acciones del modal:
-// verificar el PIN o reenviarlo si la activacion todavia esta pendiente.
+/**
+ * Funcion: inicializar_activacion_registro_modal
+ *
+ * Que hace: engancha las acciones del modal de activacion: verificar el PIN o reenviarlo.
+ * Como lo hace: normaliza el PIN mientras se escribe y registra, una sola vez, el submit del formulario y el
+ *   clic de reenviar con manejo de errores.
+ * Datos que participan: `formulario`, `botonReenviar`.
+ * Consultas (API/SQL): indirectas: verificar y reenviar.
+ * Retorna: nada.
+ */
 function inicializar_activacion_registro_modal(formulario, botonReenviar) {
     const campoPin = document.getElementById("activacion_registro_pin");
 
@@ -1365,6 +1876,16 @@ function inicializar_activacion_registro_modal(formulario, botonReenviar) {
     }
 }
 
+/**
+ * Funcion: bloquear_cambio_password_reset
+ *
+ * Que hace: bloquea los campos de contrasena nueva hasta que el PIN se valide.
+ * Como lo hace: marca pinRecuperacionVerificado = false, deshabilita campos y boton, aplica la clase de
+ *   bloqueo y limpia los campos salvo que limpiarCampos sea false.
+ * Datos que participan: `limpiarCampos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function bloquear_cambio_password_reset(limpiarCampos) {
     estado_aplicacion.pinRecuperacionVerificado = false;
 
@@ -1391,6 +1912,16 @@ function bloquear_cambio_password_reset(limpiarCampos) {
     }
 }
 
+/**
+ * Funcion: habilitar_cambio_password_reset
+ *
+ * Que hace: habilita los campos de contrasena nueva despues de validar el PIN.
+ * Como lo hace: marca pinRecuperacionVerificado = true, quita el bloqueo visual, habilita campos y boton y
+ *   enfoca la contrasena nueva.
+ * Datos que participan: estado del PIN.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function habilitar_cambio_password_reset() {
     estado_aplicacion.pinRecuperacionVerificado = true;
 
@@ -1418,6 +1949,17 @@ function habilitar_cambio_password_reset() {
     }
 }
 
+/**
+ * Funcion: validar_pin_recuperacion
+ *
+ * Que hace: valida el PIN de recuperacion antes de dejar cambiar la contrasena.
+ * Como lo hace: valida el correo, exige el PIN, llama a la API y habilita o bloquea los campos segun el
+ *   resultado.
+ * Datos que participan: #reset_correo, #reset_pin.
+ * Consultas (API/SQL): POST /api/auth/password-reset/verify (backend: SELECT en usuarios y
+ *   tokens_recuperacion_password por hash del PIN; no consume el PIN).
+ * Retorna: Promise<boolean>.
+ */
 async function validar_pin_recuperacion() {
     let correo = obtener_valor("reset_correo");
     const pin = obtener_valor("reset_pin");
@@ -1448,12 +1990,33 @@ async function validar_pin_recuperacion() {
     }
 }
 
+/**
+ * Funcion: inicializar_principal
+ *
+ * Que hace: prepara el panel principal de la wallet.
+ * Como lo hace: registra los formularios, sincroniza el selector de color de ahorro y carga todos los datos.
+ * Datos que participan: DOM de principal.html.
+ * Consultas (API/SQL): indirectas: ver cargar_panel_wallet_completo.
+ * Retorna: Promise<void>.
+ */
 async function inicializar_principal() {
     inicializar_formularios_principal();
     sincronizar_picker_color_ahorro();
     await cargar_panel_wallet_completo();
 }
 
+/**
+ * Funcion: cargar_panel_wallet_completo
+ *
+ * Que hace: carga en paralelo todo lo que muestra el panel principal y lo pinta.
+ * Como lo hace: Promise.all con cinco peticiones independientes, guarda los centros en
+ *   estado_aplicacion.centros y llama a los renderizadores de cada seccion.
+ * Datos que participan: token de sesion.
+ * Consultas (API/SQL): GET /api/dashboard (backend: 9 lecturas en paralelo: usuario, cuentas, favoritos,
+ *   tarjetas, pagos, alertas, resumen mensual, movimientos y adelanto activo); GET /api/cards; GET /api/savings;
+ *   GET /api/services/center; GET /api/salary-advance.
+ * Retorna: Promise<void>.
+ */
 async function cargar_panel_wallet_completo() {
     const [dashboard, centroTarjetas, centroAhorros, centroServicios, centroAdelanto] = await Promise.all([
         consumir_api("/api/dashboard"),
@@ -1475,6 +2038,17 @@ async function cargar_panel_wallet_completo() {
     renderizar_centro_adelanto(centroAdelanto);
 }
 
+/**
+ * Funcion: renderizar_principal
+ *
+ * Que hace: pinta el resumen del dashboard: saldos, cuenta principal, proximo pago, estado y listas.
+ * Como lo hace: escribe los textos con establecer_texto y delega en los renderizadores de movimientos, resumen
+ *   mensual, favoritos, pagos, suscripciones, cuentas y tarjetas.
+ * Datos que participan: `data` del dashboard { summary, accounts, recentMovements, favoriteBeneficiaries,
+ *   scheduledPayments, subscriptions, cards }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_principal(data) {
     const resumen = data.summary || {};
     const cuentaPrincipal = resumen.cuentaPrincipal || null;
@@ -1515,6 +2089,15 @@ function renderizar_principal(data) {
     renderizar_tarjetas(data.cards || []);
 }
 
+/**
+ * Funcion: renderizar_alerta_adelanto
+ *
+ * Que hace: muestra u oculta el aviso del adelanto activo.
+ * Como lo hace: escribe numero y fecha de pago en #texto_alerta_adelanto o lo oculta si no hay adelanto.
+ * Datos que participan: `adelanto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_alerta_adelanto(adelanto) {
     const nota = document.getElementById("texto_alerta_adelanto");
     if (!nota) return;
@@ -1529,6 +2112,16 @@ function renderizar_alerta_adelanto(adelanto) {
     nota.classList.remove("oculto");
 }
 
+/**
+ * Funcion: renderizar_lista_movimientos_recientes
+ *
+ * Que hace: pinta la lista de movimientos recientes.
+ * Como lo hace: crea un <li> por movimiento con tipo, fecha, detalle y monto con signo; escapa todo con
+ *   escapar_html.
+ * Datos que participan: `lista` de movimientos.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_lista_movimientos_recientes(lista) {
     const contenedor = document.getElementById("lista_movimientos_recientes");
     if (!contenedor) return;
@@ -1550,6 +2143,16 @@ function renderizar_lista_movimientos_recientes(lista) {
     });
 }
 
+/**
+ * Funcion: renderizar_resumen_mensual
+ *
+ * Que hace: pinta el resumen del mes.
+ * Como lo hace: arma cinco items (movimientos, depositos, pagos, transferencias y volumen) y los entrega a
+ *   renderizar_lista_resumen_compacto.
+ * Datos que participan: `resumen` { totalMovimientos, depositosMes, pagosMes, transferenciasMes, volumenMes }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_resumen_mensual(resumen) {
     renderizar_lista_resumen_compacto("lista_resumen_mensual", [
         {
@@ -1575,13 +2178,23 @@ function renderizar_resumen_mensual(resumen) {
     ]);
 }
 
+/**
+ * Funcion: renderizar_alertas_seguridad
+ *
+ * Que hace: pinta el estado de seguridad del perfil.
+ * Como lo hace: arma items de doble factor, intentos fallidos, ultimo login y ultimo cambio de clave (y
+ *   adelanto activo) con clases de estado, y actualiza el texto del desplegable.
+ * Datos que participan: `seguridad`, `adelantoActivo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_alertas_seguridad(seguridad, adelantoActivo) {
     const items = [
         {
             titulo: "Doble factor",
             detalle: seguridad.dobleFactorActivo
-                ? "Activo y listo para reforzar tus accesos."
-                : "Inactivo. Conviene reforzarlo cuando completes la configuracion.",
+                ? "Activo: al iniciar sesion se pide un codigo enviado a tu correo."
+                : "Inactivo. Activalo desde el boton de esta seccion para proteger tu acceso.",
             clase: seguridad.dobleFactorActivo ? "estado_seguridad_ok" : ""
         },
         {
@@ -1614,6 +2227,15 @@ function renderizar_alertas_seguridad(seguridad, adelantoActivo) {
     );
 }
 
+/**
+ * Funcion: renderizar_lista_estado_seguridad
+ *
+ * Que hace: pinta una lista con titulo, detalle y clase de estado por item.
+ * Como lo hace: vacia la lista y agrega un <li> por elemento, escapando el texto.
+ * Datos que participan: `id` de la lista, `items`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_lista_estado_seguridad(id, items) {
     const lista = document.getElementById(id);
     if (!lista) {
@@ -1632,6 +2254,15 @@ function renderizar_lista_estado_seguridad(id, items) {
     });
 }
 
+/**
+ * Funcion: renderizar_lista_resumen_compacto
+ *
+ * Que hace: pinta una lista compacta de resumen (titulo y detalle).
+ * Como lo hace: vacia la lista y agrega un <li class='lista_item_resumen'> por elemento.
+ * Datos que participan: `id` de la lista, `items`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_lista_resumen_compacto(id, items) {
     const lista = document.getElementById(id);
     if (!lista) {
@@ -1647,12 +2278,30 @@ function renderizar_lista_resumen_compacto(id, items) {
     });
 }
 
+/**
+ * Funcion: renderizar_favoritos_principales
+ *
+ * Que hace: pinta los favoritos del panel principal.
+ * Como lo hace: delega en renderizar_favoritos_con_acciones con el mensaje de lista vacia.
+ * Datos que participan: `favoritos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_favoritos_principales(favoritos) {
     renderizar_favoritos_con_acciones("lista_contactos_frecuentes", favoritos, {
         mensajeVacio: "No hay favoritos registrados."
     });
 }
 
+/**
+ * Funcion: renderizar_pagos_programados
+ *
+ * Que hace: pinta los pagos programados.
+ * Como lo hace: construye textos 'servicio | fecha | monto' y usa renderizar_lista_textos.
+ * Datos que participan: `pagos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_pagos_programados(pagos) {
     const items = pagos.map(function (pago) {
         return pago.nombreServicio + " | " + pago.fechaTexto + " | " + formatear_moneda(pago.monto);
@@ -1660,6 +2309,15 @@ function renderizar_pagos_programados(pagos) {
     renderizar_lista_textos("lista_pagos_programados", items.length ? items : ["No hay pagos programados activos."]);
 }
 
+/**
+ * Funcion: renderizar_suscripciones
+ *
+ * Que hace: pinta las suscripciones activas.
+ * Como lo hace: construye textos 'servicio | monto | frecuencia' y usa renderizar_lista_textos.
+ * Datos que participan: `suscripciones`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_suscripciones(suscripciones) {
     const items = suscripciones.map(function (suscripcion) {
         return suscripcion.nombreServicio + " | " + formatear_moneda(suscripcion.monto) + " | " + suscripcion.frecuencia;
@@ -1667,6 +2325,16 @@ function renderizar_suscripciones(suscripciones) {
     renderizar_lista_textos("lista_suscripciones", items.length ? items : ["No hay suscripciones activas."]);
 }
 
+/**
+ * Funcion: renderizar_cuentas
+ *
+ * Que hace: pinta la lista y el detalle de cuentas de la wallet.
+ * Como lo hace: por cada cuenta crea un <li> (alias, numero, tipo y saldo) y una tarjeta de detalle (estado,
+ *   disponible y retenido).
+ * Datos que participan: `cuentas`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_cuentas(cuentas) {
     const lista = document.getElementById("lista_cuentas_wallet");
     const detalle = document.getElementById("detalle_cuentas_wallet");
@@ -1700,6 +2368,16 @@ function renderizar_cuentas(cuentas) {
     });
 }
 
+/**
+ * Funcion: renderizar_tarjetas
+ *
+ * Que hace: pinta las tarjetas vinculadas.
+ * Como lo hace: muestra marca, alias, '**** **** **** ultimos4', cuenta y limite; si no hay tarjetas muestra
+ *   un bloque vacio. Nunca se maneja el numero completo, solo los ultimos 4 digitos.
+ * Datos que participan: `tarjetas`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_tarjetas(tarjetas) {
     const contenedor = document.getElementById("contenedor_tarjetas_wallet");
     if (!contenedor) return;
@@ -1726,6 +2404,22 @@ function renderizar_tarjetas(tarjetas) {
     });
 }
 
+/**
+ * Funcion: inicializar_formularios_principal
+ *
+ * Que hace: registra los submit de todos los formularios y modales del panel principal (una sola vez por
+ *   formulario).
+ * Como lo hace: cada formulario sigue el mismo patron: evita el envio normal, muestra 'cargando', llama a la
+ *   API, resetea y cierra el modal, recarga el panel y las alertas, y muestra el resultado o el error.
+ * Datos que participan: formularios de favorito, tarjeta, cuenta secundaria, ahorro, aporte, servicio, pago y
+ *   adelanto.
+ * Consultas (API/SQL): POST /api/beneficiaries (UPSERT en beneficiarios); POST /api/cards (INSERT en
+ *   tarjetas); POST /api/accounts (INSERT en cuentas); POST /api/savings (INSERT en bolsillos_ahorro); POST
+ *   /api/savings/deposit (UPDATE de cuentas y bolsillos + movimientos); POST /api/services/link (UPSERT en
+ *   servicios_usuario); POST /api/services/pay (pago con confirmacion previa); POST
+ *   /api/salary-advance/request-code y POST /api/salary-advance (acredita el adelanto).
+ * Retorna: nada.
+ */
 function inicializar_formularios_principal() {
     const formularioFavorito = document.getElementById("formulario_favorito");
     const formularioTarjeta = document.getElementById("formulario_tarjeta");
@@ -2066,6 +2760,16 @@ function inicializar_formularios_principal() {
     }
 }
 
+/**
+ * Funcion: renderizar_centro_tarjetas
+ *
+ * Que hace: llena los selectores de banco y cuenta y pinta las tarjetas.
+ * Como lo hace: usa poblar_select_generico para #favorito_banco, #tarjeta_cuenta_id y #tarjeta_banco_id y
+ *   despues renderizar_tarjetas.
+ * Datos que participan: `data` { banks, accounts, cards }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_centro_tarjetas(data) {
     poblar_select_generico("favorito_banco", data?.banks || [], function (banco) {
         return {
@@ -2091,6 +2795,16 @@ function renderizar_centro_tarjetas(data) {
     renderizar_tarjetas(data?.cards || []);
 }
 
+/**
+ * Funcion: renderizar_centro_ahorros
+ *
+ * Que hace: llena los selectores de ahorro y pinta los bolsillos con su barra de progreso.
+ * Como lo hace: calcula progreso = min(100, saldoActual / metaMonto * 100) y usa el color del bolsillo en la
+ *   barra; si no hay bolsillos muestra un bloque vacio.
+ * Datos que participan: `data` { accounts, pockets }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_centro_ahorros(data) {
     const cuentas = data?.accounts || [];
     const bolsillos = data?.pockets || [];
@@ -2146,6 +2860,17 @@ function renderizar_centro_ahorros(data) {
     });
 }
 
+/**
+ * Funcion: renderizar_centro_servicios
+ *
+ * Que hace: llena los selectores de servicios y pinta servicios vinculados, pagos programados y adelanto.
+ * Como lo hace: puebla proveedores y cuentas, agrega la opcion 'Pagar adelanto' cuando existe un adelanto y
+ *   lista los items.
+ * Datos que participan: `data` { accounts, providers, linkedServices, scheduledPayments, salaryAdvancePayment
+ *   }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_centro_servicios(data) {
     const cuentas = data?.accounts || [];
     const proveedores = data?.providers || [];
@@ -2239,6 +2964,19 @@ function renderizar_centro_servicios(data) {
     }
 }
 
+/**
+ * Funcion: sincronizar_pago_servicio_desde_vinculo
+ *
+ * Que hace: mantiene coherente el formulario de pago: si se elige un servicio vinculado, el proveedor y el
+ *   identificador pasan a ser los del contrato real.
+ * Como lo hace: si el destino es el adelanto bloquea el identificador; si hay servicio vinculado copia su
+ *   identificador, lo deja de solo lectura y fija el proveedor. Asi no se mandan combinaciones ambiguas al
+ *   backend.
+ * Datos que participan: #pago_servicio_vinculado_id, #pago_servicio_identificador,
+ *   #pago_servicio_proveedor_id, estado_aplicacion.centros.servicios.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function sincronizar_pago_servicio_desde_vinculo() {
     const select = document.getElementById("pago_servicio_vinculado_id");
     const inputIdentificador = document.getElementById("pago_servicio_identificador");
@@ -2277,6 +3015,16 @@ function sincronizar_pago_servicio_desde_vinculo() {
     // Asi evito mandar combinaciones ambiguas al backend.
 }
 
+/**
+ * Funcion: renderizar_centro_adelanto
+ *
+ * Que hace: pinta el estado del adelanto salarial, su politica y el historial.
+ * Como lo hace: elige el mensaje segun haya adelanto (congelado o activo) o politica disponible, deshabilita
+ *   los botones si ya hay adelanto o se agoto el cupo anual y lista el historial.
+ * Datos que participan: `data` { currentAdvance, history, policy }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_centro_adelanto(data) {
     const actual = data?.currentAdvance || null;
     const historial = data?.history || [];
@@ -2327,10 +3075,30 @@ function renderizar_centro_adelanto(data) {
     });
 }
 
+/**
+ * Funcion: refrescar_panel_alertas_desde_servidor
+ *
+ * Que hace: recarga la campana despues de una operacion que genera alertas.
+ * Como lo hace: delega en cargar_alertas_desde_servidor.
+ * Datos que participan: token.
+ * Consultas (API/SQL): GET /api/alerts.
+ * Retorna: Promise<void>.
+ */
 async function refrescar_panel_alertas_desde_servidor() {
     await cargar_alertas_desde_servidor();
 }
 
+/**
+ * Funcion: inicializar_modales_wallet
+ *
+ * Que hace: conecta cada boton con su modal (<dialog>) y define como se cierran.
+ * Como lo hace: recorre la tabla de disparadores y registra, una sola vez, el clic que abre el modal; cierra
+ *   al hacer clic en el fondo (comparando las coordenadas con el rectangulo del dialogo) y en los botones
+ *   [data-cerrar-modal].
+ * Datos que participan: botones #boton_abrir_modal_*, elementos .modal_wallet.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function inicializar_modales_wallet() {
     const disparadores = [
         { botonId: "boton_abrir_modal_favorito", modalId: "modal_favorito_wallet" },
@@ -2405,6 +3173,16 @@ function inicializar_modales_wallet() {
     });
 }
 
+/**
+ * Funcion: abrir_modal_wallet
+ *
+ * Que hace: abre un modal por su id.
+ * Como lo hace: prepara el contenido segun el modal y usa showModal() o, si el navegador no lo soporta, el
+ *   atributo open.
+ * Datos que participan: `id`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function abrir_modal_wallet(id) {
     const modal = document.getElementById(id);
     if (!modal) {
@@ -2423,6 +3201,15 @@ function abrir_modal_wallet(id) {
     modal.setAttribute("open", "open");
 }
 
+/**
+ * Funcion: cerrar_modal_wallet
+ *
+ * Que hace: cierra un modal por su id.
+ * Como lo hace: usa close() o quita el atributo open.
+ * Datos que participan: `id`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function cerrar_modal_wallet(id) {
     const modal = document.getElementById(id);
     if (!modal) {
@@ -2437,6 +3224,16 @@ function cerrar_modal_wallet(id) {
     modal.removeAttribute("open");
 }
 
+/**
+ * Funcion: preparar_modal_wallet
+ *
+ * Que hace: deja listo el contenido de ciertos modales antes de abrirlos.
+ * Como lo hace: para el de recuperacion de seguridad precarga el correo del usuario; para el de pago de
+ *   servicios sincroniza proveedor e identificador.
+ * Datos que participan: `id`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function preparar_modal_wallet(id) {
     if (id === "modal_recuperacion_seguridad") {
         preparar_modal_recuperacion_seguridad();
@@ -2448,6 +3245,19 @@ function preparar_modal_wallet(id) {
     }
 }
 
+/**
+ * Funcion: inicializar_recuperacion_seguridad_modal
+ *
+ * Que hace: engancha el flujo de cambio de contrasena dentro de un modal (perfil y panel principal).
+ * Como lo hace: sincroniza el correo entre pasos para no escribirlo dos veces, limpia el PIN a solo numeros, y
+ *   registra el submit de solicitar PIN, el boton de validar PIN y el submit de cambiar contrasena (que exige
+ *   haber validado el PIN y que ambas claves coincidan).
+ * Datos que participan: `formularioRecuperacionModal`, `formularioResetModal`, `botonValidarPinModal`.
+ * Consultas (API/SQL): POST /api/auth/password-reset/request (genera y envia el PIN); POST
+ *   /api/auth/password-reset/verify (valida el PIN sin consumirlo); POST /api/auth/password-reset/confirm
+ *   (backend: UPDATE usuarios_credenciales con el nuevo hash scrypt y marca los tokens como usados).
+ * Retorna: nada.
+ */
 function inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, formularioResetModal, botonValidarPinModal) {
     if (!formularioRecuperacionModal || !formularioResetModal || !botonValidarPinModal) {
         return;
@@ -2592,6 +3402,15 @@ function inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, f
     bloquear_cambio_password_reset_modal(false);
 }
 
+/**
+ * Funcion: preparar_modal_recuperacion_seguridad
+ *
+ * Que hace: reinicia el modal de recuperacion con el correo del usuario autenticado.
+ * Como lo hace: resetea ambos formularios, precarga el correo y deja los mensajes iniciales.
+ * Datos que participan: usuario actual.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function preparar_modal_recuperacion_seguridad() {
     const correo = obtener_usuario_actual()?.correo || "";
     document.getElementById("formulario_recuperacion_modal")?.reset();
@@ -2602,6 +3421,15 @@ function preparar_modal_recuperacion_seguridad() {
     mostrar_mensaje_grupo(["mensaje_reset_modal"], "Primero valida tu PIN y luego se habilitara el cambio de contrasena.", "info", true);
 }
 
+/**
+ * Funcion: preparar_modal_reset_con_datos
+ *
+ * Que hace: precarga correo y PIN en el modal y bloquea el cambio de clave hasta validar.
+ * Como lo hace: escribe los valores en los campos y llama a bloquear_cambio_password_reset_modal.
+ * Datos que participan: `correo`, `pin`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function preparar_modal_reset_con_datos(correo, pin) {
     establecer_valor("recuperacion_modal_correo", correo || "");
     establecer_valor("reset_modal_correo", correo || "");
@@ -2609,6 +3437,16 @@ function preparar_modal_reset_con_datos(correo, pin) {
     bloquear_cambio_password_reset_modal(true);
 }
 
+/**
+ * Funcion: bloquear_cambio_password_reset_modal
+ *
+ * Que hace: bloquea los campos de contrasena nueva del modal hasta validar el PIN.
+ * Como lo hace: marca pinRecuperacionModalVerificado = false, deshabilita campos y boton y aplica la clase de
+ *   bloqueo; limpia los campos salvo que limpiarCampos sea false.
+ * Datos que participan: `limpiarCampos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function bloquear_cambio_password_reset_modal(limpiarCampos) {
     estado_aplicacion.pinRecuperacionModalVerificado = false;
 
@@ -2635,6 +3473,15 @@ function bloquear_cambio_password_reset_modal(limpiarCampos) {
     }
 }
 
+/**
+ * Funcion: habilitar_cambio_password_reset_modal
+ *
+ * Que hace: habilita los campos de contrasena nueva del modal tras validar el PIN.
+ * Como lo hace: marca pinRecuperacionModalVerificado = true, quita el bloqueo y enfoca el primer campo.
+ * Datos que participan: estado del PIN.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function habilitar_cambio_password_reset_modal() {
     estado_aplicacion.pinRecuperacionModalVerificado = true;
 
@@ -2660,6 +3507,17 @@ function habilitar_cambio_password_reset_modal() {
     campoNueva?.focus();
 }
 
+/**
+ * Funcion: validar_pin_recuperacion_modal
+ *
+ * Que hace: valida el PIN de recuperacion dentro del modal.
+ * Como lo hace: valida correo, limpia el PIN, llama a la API y habilita o bloquea el cambio de contrasena
+ *   segun el resultado.
+ * Datos que participan: #reset_modal_correo, #reset_modal_pin.
+ * Consultas (API/SQL): POST /api/auth/password-reset/verify (backend: SELECT en usuarios y
+ *   tokens_recuperacion_password por hash del PIN).
+ * Retorna: Promise<boolean>.
+ */
 async function validar_pin_recuperacion_modal() {
     let correo = obtener_valor("reset_modal_correo");
     const pin = clean_pin_visual(obtener_valor("reset_modal_pin"));
@@ -2691,6 +3549,20 @@ async function validar_pin_recuperacion_modal() {
     }
 }
 
+/**
+ * Funcion: inicializar_perfil
+ *
+ * Que hace: prepara la pagina de perfil: carga datos, logros, trofeos y gestiona el formulario de edicion y la
+ *   foto.
+ * Como lo hace: carga en paralelo perfil, tarjetas, servicios, ahorros y adelanto; renderiza todo; al elegir
+ *   una foto la lee como data URL para una vista previa (no se sube hasta guardar); el checkbox 'eliminar foto'
+ *   anula la vista previa; el submit valida todo en el cliente y envia el perfil.
+ * Datos que participan: formulario_perfil, #perfil_foto, #perfil_eliminar_foto.
+ * Consultas (API/SQL): GET /api/profile (backend: SELECT de usuarios JOIN usuarios_credenciales y los ultimos
+ *   8 accesos_usuario); GET /api/cards; GET /api/services/center; GET /api/savings; GET /api/salary-advance;
+ *   POST /api/profile (backend: SELECT ... FOR UPDATE y UPDATE usuarios, con la foto guardada en disco).
+ * Retorna: Promise<void>.
+ */
 async function inicializar_perfil() {
     const formulario = document.getElementById("formulario_perfil");
     const campoFoto = document.getElementById("perfil_foto");
@@ -2704,6 +3576,7 @@ async function inicializar_perfil() {
     let fotoTemporal = "";
     inicializar_modales_wallet();
     inicializar_recuperacion_seguridad_modal(formularioRecuperacionModal, formularioResetModal, botonValidarPinModal);
+    inicializar_doble_factor_perfil();
     poblar_selector_prefijo_telefono(selectorPrefijoTelefonoPerfil, "perfil_telefono", obtener_prefijo_telefono_por_defecto());
     aplicar_formato_telefono_input(document.getElementById("perfil_telefono"));
     aplicar_formato_documento_input(document.getElementById("perfil_documento"));
@@ -2859,6 +3732,16 @@ async function inicializar_perfil() {
     }
 }
 
+/**
+ * Funcion: renderizar_perfil
+ *
+ * Que hace: pinta los datos del perfil y rellena el formulario.
+ * Como lo hace: escribe nombre, correo, estado y resumen, llena los campos (telefono separado en prefijo y
+ *   numero), muestra avatar y accesos recientes.
+ * Datos que participan: `profile`, `recentAccessLogs`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_perfil(profile, recentAccessLogs) {
     if (!profile) {
         return;
@@ -2893,8 +3776,19 @@ function renderizar_perfil(profile, recentAccessLogs) {
     });
     renderizar_avatar_perfil(profile, "");
     renderizar_accesos_perfil(recentAccessLogs || []);
+    actualizar_boton_doble_factor();
 }
 
+/**
+ * Funcion: renderizar_avatar_perfil
+ *
+ * Que hace: pinta el avatar grande del perfil.
+ * Como lo hace: prefiere la foto temporal (vista previa), luego la guardada y, si no hay ninguna, las
+ *   iniciales.
+ * Datos que participan: `profile`, `fotoTemporal` (data URL).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_avatar_perfil(profile, fotoTemporal) {
     const contenedor = document.getElementById("perfil_avatar");
     if (!contenedor) return;
@@ -2917,6 +3811,16 @@ function renderizar_avatar_perfil(profile, fotoTemporal) {
     contenedor.appendChild(iniciales);
 }
 
+/**
+ * Funcion: renderizar_accesos_perfil
+ *
+ * Que hace: pinta los accesos recientes a la cuenta.
+ * Como lo hace: muestra hasta 4: fecha, resultado y detalle, IP y un resumen de dispositivo y navegador sin
+ *   repetidos.
+ * Datos que participan: `accesos` (tabla accesos_usuario).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_accesos_perfil(accesos) {
     const lista = document.getElementById("lista_accesos_perfil");
     if (!lista) return;
@@ -2963,6 +3867,15 @@ function renderizar_accesos_perfil(accesos) {
     });
 }
 
+/**
+ * Funcion: actualizar_meta_desplegable
+ *
+ * Que hace: actualiza el texto resumen de un panel desplegable.
+ * Como lo hace: escribe el texto en el elemento por id.
+ * Datos que participan: `id`, `texto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function actualizar_meta_desplegable(id, texto) {
     const elemento = document.getElementById(id);
     if (!elemento) {
@@ -2972,6 +3885,16 @@ function actualizar_meta_desplegable(id, texto) {
     elemento.textContent = texto || "";
 }
 
+/**
+ * Funcion: actualizar_texto_archivo_perfil
+ *
+ * Que hace: refleja en pantalla el estado de la foto de perfil.
+ * Como lo hace: segun la configuracion muestra: foto marcada para eliminar, archivo seleccionado (vista
+ *   previa), foto guardada o ningun archivo.
+ * Datos que participan: `configuracion` { nombreArchivo, tieneFotoGuardada, pendienteEliminar, vistaPrevia }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function actualizar_texto_archivo_perfil(configuracion) {
     const textoArchivo = document.getElementById("texto_archivo_perfil");
     const meta = document.getElementById("meta_perfil_foto");
@@ -3011,6 +3934,16 @@ function actualizar_texto_archivo_perfil(configuracion) {
     }
 }
 
+/**
+ * Funcion: resumir_texto_entorno
+ *
+ * Que hace: convierte un user agent largo en una etiqueta corta (Chrome 120, Windows...).
+ * Como lo hace: busca con expresiones regulares Chrome, Firefox o Safari con su version mayor y, si no, el
+ *   sistema operativo; como ultimo recurso recorta el texto a 52 caracteres.
+ * Datos que participan: `texto` (dispositivo o navegador guardado en accesos_usuario).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function resumir_texto_entorno(texto) {
     const limpio = String(texto || "").trim();
     if (!limpio) {
@@ -3048,6 +3981,16 @@ function resumir_texto_entorno(texto) {
     return limpio.split("|")[0].slice(0, 52);
 }
 
+/**
+ * Funcion: renderizar_logros_perfil
+ *
+ * Que hace: pinta el resumen de logros del usuario.
+ * Como lo hace: cuenta tarjetas, servicios, bolsillos, modulos Forex superados (localStorage) y simulaciones,
+ *   y agrega el adelanto activo si existe.
+ * Datos que participan: `resumen` { cards, linkedServices, pockets, currentAdvance }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_logros_perfil(resumen) {
     const progresoForex = obtener_progreso_forex_local();
     const modulosForex = Object.keys(progresoForex).filter(function (clave) {
@@ -3108,6 +4051,16 @@ function renderizar_logros_perfil(resumen) {
     });
 }
 
+/**
+ * Funcion: renderizar_trofeos_perfil
+ *
+ * Que hace: pinta los trofeos y marca cuales estan desbloqueados.
+ * Como lo hace: evalua reglas simples (primer bolsillo, 1, 3 y 6 modulos Forex, 3 simulaciones) y atenua los
+ *   bloqueados.
+ * Datos que participan: `resumen`, progreso e historial locales.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_trofeos_perfil(resumen) {
     const lista = document.getElementById("lista_trofeos_perfil");
     if (!lista) {
@@ -3169,6 +4122,15 @@ function renderizar_trofeos_perfil(resumen) {
     });
 }
 
+/**
+ * Funcion: obtener_iniciales_usuario
+ *
+ * Que hace: obtiene las iniciales para el avatar sin foto.
+ * Como lo hace: toma las dos primeras palabras de nombres y apellidos; si no hay nombre devuelve 'WD'.
+ * Datos que participan: `profile`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string de hasta 2 letras.
+ */
 function obtener_iniciales_usuario(profile) {
     const nombres = `${profile?.nombres || ""} ${profile?.apellidos || ""}`.trim();
     if (!nombres) {
@@ -3184,9 +4146,18 @@ function obtener_iniciales_usuario(profile) {
         .join("");
 }
 
-// Funcion: leer_archivo_como_data_url
-// Aqui convierto archivos a data URL y aplico reglas configurables de tipo y tamano.
-// Esto me permite reutilizar el mismo helper para foto de perfil y documento DUI sin duplicar logica.
+/**
+ * Funcion: leer_archivo_como_data_url
+ *
+ * Que hace: convierte un archivo a data URL aplicando reglas de tipo y tamano; se reutiliza para la foto de
+ *   perfil y otros archivos.
+ * Como lo hace: valida tipo MIME (JPG, PNG o WEBP por defecto) y tamano (5 MB por defecto) y lee el archivo
+ *   con FileReader.
+ * Datos que participan: `archivo`, `opciones` { tiposPermitidos, sizeMaximaBytes, mensajeTipo, mensajeTamano,
+ *   mensajeLectura }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: Promise<string> con el data URL; rechaza con el mensaje correspondiente.
+ */
 async function leer_archivo_como_data_url(archivo, opciones) {
     if (!archivo) {
         return "";
@@ -3219,6 +4190,19 @@ async function leer_archivo_como_data_url(archivo, opciones) {
     });
 }
 
+/**
+ * Funcion: inicializar_transferencias
+ *
+ * Que hace: prepara la pagina de transferencias y registra el envio.
+ * Como lo hace: carga metadatos, activa o desactiva la fecha programada segun el tipo, conecta los botones de
+ *   monto rapido, rellena el destino al elegir un favorito (y lo des-selecciona si el usuario edita a mano) y,
+ *   en el submit, arma el payload, pide confirmacion con SweetAlert2 y llama a la API.
+ * Datos que participan: formulario_transferencia y sus campos.
+ * Consultas (API/SQL): GET /api/transfers/metadata y GET /api/catalogs (via cargar_metadata_transferencias);
+ *   POST /api/transfers (backend: bloquea la cuenta origen FOR UPDATE, INSERT en transacciones, UPDATE de
+ *   cuentas, INSERT en movimientos_cuenta y abono espejo si el destino es una wallet interna).
+ * Retorna: Promise<void>.
+ */
 async function inicializar_transferencias() {
     const formulario = document.getElementById("formulario_transferencia");
     const selectFavoritos = document.getElementById("beneficiario_favorito_transferencia");
@@ -3299,6 +4283,17 @@ async function inicializar_transferencias() {
     });
 }
 
+/**
+ * Funcion: cargar_metadata_transferencias
+ *
+ * Que hace: carga los datos previos para armar el formulario de transferencias.
+ * Como lo hace: opcionalmente refresca la sesion y pide en paralelo metadatos y catalogo; guarda los favoritos
+ *   en el estado y llena selects y resumenes.
+ * Datos que participan: `forzarSesion`.
+ * Consultas (API/SQL): GET /api/transfers/metadata (backend: cuentas, 20 favoritos y resumen mensual) y GET
+ *   /api/catalogs (backend: SELECT de catalogo_bancos y proveedores_servicio activos).
+ * Retorna: Promise<void>.
+ */
 async function cargar_metadata_transferencias(forzarSesion) {
     if (forzarSesion) {
         await obtener_sesion(true);
@@ -3320,6 +4315,15 @@ async function cargar_metadata_transferencias(forzarSesion) {
     renderizar_beneficiarios_operaciones(metadata.favoriteBeneficiaries || []);
 }
 
+/**
+ * Funcion: poblar_select_cuentas
+ *
+ * Que hace: llena el select de cuenta de origen.
+ * Como lo hace: crea una <option> por cuenta con alias, numero y saldo disponible.
+ * Datos que participan: `cuentas`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function poblar_select_cuentas(cuentas) {
     const select = document.getElementById("cuenta_origen_transferencia");
     if (!select) return;
@@ -3333,6 +4337,15 @@ function poblar_select_cuentas(cuentas) {
     });
 }
 
+/**
+ * Funcion: poblar_select_favoritos
+ *
+ * Que hace: llena el select de favoritos.
+ * Como lo hace: agrega una opcion vacia y una por favorito (nombre, banco y numero de cuenta).
+ * Datos que participan: `favoritos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function poblar_select_favoritos(favoritos) {
     const select = document.getElementById("beneficiario_favorito_transferencia");
     if (!select) return;
@@ -3351,6 +4364,15 @@ function poblar_select_favoritos(favoritos) {
     });
 }
 
+/**
+ * Funcion: poblar_select_bancos
+ *
+ * Que hace: llena el select de banco destino conservando la seleccion previa.
+ * Como lo hace: recrea las opciones desde el catalogo y restaura el valor que habia.
+ * Datos que participan: `bancos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function poblar_select_bancos(bancos) {
     const select = document.getElementById("banco_destino_transferencia");
     if (!select) return;
@@ -3375,6 +4397,16 @@ function poblar_select_bancos(bancos) {
     }
 }
 
+/**
+ * Funcion: poblar_select_generico
+ *
+ * Que hace: llena cualquier select con una lista de elementos.
+ * Como lo hace: recibe un formateador que devuelve { value, text } por elemento, agrega un placeholder
+ *   opcional y conserva el valor seleccionado antes del repintado.
+ * Datos que participan: `id`, `elementos`, `formateador`, `placeholder`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function poblar_select_generico(id, elementos, formateador, placeholder) {
     const select = document.getElementById(id);
     if (!select) {
@@ -3404,6 +4436,16 @@ function poblar_select_generico(id, elementos, formateador, placeholder) {
     }
 }
 
+/**
+ * Funcion: renderizar_resumen_operaciones
+ *
+ * Que hace: pinta el resumen de la pagina de transferencias.
+ * Como lo hace: arma textos de cuentas activas, favoritos, saldo total, transferencias del mes, programadas y
+ *   ultima transferencia.
+ * Datos que participan: `resumen`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_resumen_operaciones(resumen) {
     const items = [
         "Cuentas activas: " + (resumen.cuentasActivas || 0),
@@ -3416,6 +4458,15 @@ function renderizar_resumen_operaciones(resumen) {
     renderizar_lista_textos("lista_resumen_operaciones", items);
 }
 
+/**
+ * Funcion: renderizar_beneficiarios_operaciones
+ *
+ * Que hace: pinta los favoritos de la pagina de transferencias con boton 'Quitar'.
+ * Como lo hace: delega en renderizar_favoritos_con_acciones.
+ * Datos que participan: `favoritos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_beneficiarios_operaciones(favoritos) {
     renderizar_favoritos_con_acciones("lista_beneficiarios_operaciones", favoritos, {
         mensajeVacio: "Aun no tienes beneficiarios favoritos.",
@@ -3423,6 +4474,15 @@ function renderizar_beneficiarios_operaciones(favoritos) {
     });
 }
 
+/**
+ * Funcion: alternar_fecha_programada
+ *
+ * Que hace: habilita el campo de fecha solo cuando la transferencia es programada.
+ * Como lo hace: ajusta required y disabled segun el tipo y limpia el valor si no aplica.
+ * Datos que participan: #tipo_transferencia, #fecha_programada_transferencia.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function alternar_fecha_programada() {
     const tipo = obtener_valor("tipo_transferencia");
     const fecha = document.getElementById("fecha_programada_transferencia");
@@ -3435,6 +4495,16 @@ function alternar_fecha_programada() {
     }
 }
 
+/**
+ * Funcion: aplicar_favorito_seleccionado
+ *
+ * Que hace: copia al formulario los datos del favorito elegido.
+ * Como lo hace: busca el favorito en el estado y rellena destinatario, banco y cuenta; usa la bandera
+ *   aplicandoFavorito para que esos cambios no des-seleccionen el favorito.
+ * Datos que participan: `estado_aplicacion.favoritosTransferencia`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_favorito_seleccionado() {
     const idFavorito = obtener_valor("beneficiario_favorito_transferencia");
     const favorito = estado_aplicacion.favoritosTransferencia.find(function (item) {
@@ -3452,6 +4522,15 @@ function aplicar_favorito_seleccionado() {
     estado_aplicacion.aplicandoFavorito = false;
 }
 
+/**
+ * Funcion: renderizar_favoritos_con_acciones
+ *
+ * Que hace: pinta una lista de favoritos con un boton para quitar cada uno.
+ * Como lo hace: crea el contenido con textContent (sin HTML) y conecta el boton a eliminar_favorito.
+ * Datos que participan: `idLista`, `favoritos`, `opciones` { mensajeVacio, mensajeEstadoId }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_favoritos_con_acciones(idLista, favoritos, opciones) {
     const lista = document.getElementById(idLista);
     if (!lista) return;
@@ -3492,6 +4571,17 @@ function renderizar_favoritos_con_acciones(idLista, favoritos, opciones) {
     });
 }
 
+/**
+ * Funcion: eliminar_favorito
+ *
+ * Que hace: quita un beneficiario de favoritos sin borrarlo de la base.
+ * Como lo hace: deshabilita el boton, llama a la API, recarga la pagina correspondiente (principal u
+ *   operaciones) y las alertas y muestra el resultado.
+ * Datos que participan: `beneficiaryId`, `mensajeEstadoId`, `botonActivo`.
+ * Consultas (API/SQL): POST /api/beneficiaries/remove-favorite (backend: UPDATE beneficiarios SET es_favorito
+ *   = FALSE WHERE id_beneficiario = $1 AND usuario_id = $2 ...).
+ * Retorna: Promise<void>.
+ */
 async function eliminar_favorito(beneficiaryId, mensajeEstadoId, botonActivo) {
     if (botonActivo) {
         botonActivo.disabled = true;
@@ -3536,6 +4626,16 @@ async function eliminar_favorito(beneficiaryId, mensajeEstadoId, botonActivo) {
     }
 }
 
+/**
+ * Funcion: inicializar_movimientos
+ *
+ * Que hace: prepara la pagina de movimientos con filtros.
+ * Como lo hace: conecta el buscador (con retardo de 180 ms para no consultar en cada tecla) y los selects de
+ *   tipo y estado, y hace la primera carga.
+ * Datos que participan: #filtro_busqueda_movimientos, #filtro_tipo_movimientos, #filtro_estado_movimientos.
+ * Consultas (API/SQL): indirecta: GET /api/movements.
+ * Retorna: Promise<void>.
+ */
 async function inicializar_movimientos() {
     const buscador = document.getElementById("filtro_busqueda_movimientos");
     const tipo = document.getElementById("filtro_tipo_movimientos");
@@ -3556,6 +4656,17 @@ async function inicializar_movimientos() {
     await cargar_movimientos_filtrados();
 }
 
+/**
+ * Funcion: cargar_movimientos_filtrados
+ *
+ * Que hace: pide al backend los movimientos con los filtros actuales y repinta la pagina.
+ * Como lo hace: arma la query string con search, type y status normalizados y renderiza tabla, actividad,
+ *   resumen y graficos.
+ * Datos que participan: valores de los filtros.
+ * Consultas (API/SQL): GET /api/movements?search=&type=&status= (backend: SELECT dinamico sobre transacciones
+ *   con LEFT JOIN a beneficiarios, proveedores_servicio y movimientos_cuenta; ver movement.dao.getMovementRows).
+ * Retorna: Promise<void>.
+ */
 async function cargar_movimientos_filtrados() {
     const parametros = new URLSearchParams({
         search: obtener_valor("filtro_busqueda_movimientos"),
@@ -3571,6 +4682,16 @@ async function cargar_movimientos_filtrados() {
     renderizar_graficos_movimientos(estado_aplicacion.movimientos);
 }
 
+/**
+ * Funcion: renderizar_tabla_movimientos
+ *
+ * Que hace: pinta la tabla de movimientos.
+ * Como lo hace: crea una fila por movimiento (fecha, tipo, detalle, estado, monto con signo) usando
+ *   textContent; si no hay datos muestra una fila informativa.
+ * Datos que participan: `lista`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_tabla_movimientos(lista) {
     const cuerpo = document.getElementById("cuerpo_tabla_movimientos");
     if (!cuerpo) return;
@@ -3600,6 +4721,15 @@ function renderizar_tabla_movimientos(lista) {
     });
 }
 
+/**
+ * Funcion: renderizar_actividad_movimientos
+ *
+ * Que hace: pinta la actividad reciente (4 ultimos movimientos).
+ * Como lo hace: convierte cada movimiento en un item compacto de titulo y detalle.
+ * Datos que participan: `lista`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_actividad_movimientos(lista) {
     const items = lista.slice(0, 4).map(function (movimiento) {
         return {
@@ -3616,6 +4746,17 @@ function renderizar_actividad_movimientos(lista) {
     renderizar_lista_resumen_compacto("lista_actividad_transferencias", items);
 }
 
+/**
+ * Funcion: renderizar_resumen_movimientos
+ *
+ * Que hace: calcula y pinta el resumen de lo que se ve con el filtro actual.
+ * Como lo hace: cuenta ingresos (monto >
+ *   0) y egresos (monto <
+ *   0) y suma el volumen absoluto.
+ * Datos que participan: `lista`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_resumen_movimientos(lista) {
     const ingresos = lista.filter(function (movimiento) { return movimiento.monto > 0; }).length;
     const egresos = lista.filter(function (movimiento) { return movimiento.monto < 0; }).length;
@@ -3643,6 +4784,17 @@ function renderizar_resumen_movimientos(lista) {
     ]);
 }
 
+/**
+ * Funcion: renderizar_graficos_movimientos
+ *
+ * Que hace: dibuja los graficos de movimientos con Chart.js.
+ * Como lo hace: agrupa por fecha ingresos y egresos (ultimas 7 fechas) para un grafico de barras y reparte
+ *   gastos, ahorro e ingresos en un grafico de dona; usa los colores del tema. Si Chart.js no cargo, no hace
+ *   nada.
+ * Datos que participan: `lista`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_graficos_movimientos(lista) {
     if (!window.Chart) {
         return;
@@ -3737,6 +4889,16 @@ function renderizar_graficos_movimientos(lista) {
     });
 }
 
+/**
+ * Funcion: inicializar_portal_forex
+ *
+ * Que hace: prepara las paginas del modulo Forex (mercado, aprendizaje y cuestionario).
+ * Como lo hace: conecta el selector de par, el submit del cuestionario y, solo en la pagina de mercado, un
+ *   refresco automatico cada 60 segundos; luego carga el contenido.
+ * Datos que participan: #selector_par_forex, #formulario_quiz_forex.
+ * Consultas (API/SQL): indirecta: GET /api/forex/learning.
+ * Retorna: Promise<void>.
+ */
 async function inicializar_portal_forex() {
     const selector = document.getElementById("selector_par_forex");
     const formularioQuiz = document.getElementById("formulario_quiz_forex");
@@ -3772,6 +4934,17 @@ async function inicializar_portal_forex() {
     await cargar_aprendizaje_forex(selector.value || "EURUSD");
 }
 
+/**
+ * Funcion: cargar_aprendizaje_forex
+ *
+ * Que hace: carga el contenido educativo y el mercado del par elegido y repinta el modulo Forex.
+ * Como lo hace: guarda el par activo, consulta la API, lee progreso e historial locales, escoge el modulo
+ *   activo (el primero desbloqueado si el actual ya no existe) y llama a los renderizadores.
+ * Datos que participan: `par` (ej. EURUSD).
+ * Consultas (API/SQL): GET /api/forex/learning?pair= (backend: plan de estudio fijo + serie del BCE o
+ *   respaldo; no usa base de datos).
+ * Retorna: Promise<void>.
+ */
 async function cargar_aprendizaje_forex(par) {
     estado_aplicacion.forexParActivo = String(par || "EURUSD").toUpperCase();
     estado_aplicacion.forexAprendizaje = await consumir_api(`/api/forex/learning?pair=${encodeURIComponent(estado_aplicacion.forexParActivo)}`);
@@ -3793,6 +4966,16 @@ async function cargar_aprendizaje_forex(par) {
     renderizar_modulo_forex_activo();
 }
 
+/**
+ * Funcion: renderizar_modulos_forex
+ *
+ * Que hace: pinta las tarjetas de los modulos de estudio.
+ * Como lo hace: crea un boton por modulo; deshabilita los bloqueados y marca activo, completo o bloqueado; al
+ *   hacer clic cambia el modulo activo.
+ * Datos que participan: curriculum, progreso local.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_modulos_forex() {
     const contenedor = document.getElementById("contenedor_cursos_forex");
     const curriculum = estado_aplicacion.forexAprendizaje?.curriculum || [];
@@ -3825,6 +5008,15 @@ function renderizar_modulos_forex() {
     });
 }
 
+/**
+ * Funcion: renderizar_tablero_progreso_forex
+ *
+ * Que hace: pinta el porcentaje de avance y el historial de estudio.
+ * Como lo hace: calcula completados / total, ajusta la barra y lista los ultimos 5 hitos.
+ * Datos que participan: curriculum, progreso e historial locales.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_tablero_progreso_forex() {
     const curriculum = estado_aplicacion.forexAprendizaje?.curriculum || [];
     const completados = curriculum.filter(function (modulo) {
@@ -3865,6 +5057,15 @@ function renderizar_tablero_progreso_forex() {
         });
 }
 
+/**
+ * Funcion: modulo_desbloqueado
+ *
+ * Que hace: indica si un modulo ya se puede abrir.
+ * Como lo hace: el primero siempre esta libre; los demas exigen que todos los anteriores esten superados.
+ * Datos que participan: `indice` del modulo.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: boolean.
+ */
 function modulo_desbloqueado(indice) {
     if (indice <= 0) {
         return true;
@@ -3880,6 +5081,16 @@ function modulo_desbloqueado(indice) {
     return true;
 }
 
+/**
+ * Funcion: renderizar_mercado_forex
+ *
+ * Que hace: pinta el resumen, el grafico de precio, las metricas y las notas del mercado.
+ * Como lo hace: escribe el resumen del par, dibuja una linea con la serie, crea una tarjeta por cada
+ *   contextCard y lista las notas.
+ * Datos que participan: estado_aplicacion.forexAprendizaje.market.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_mercado_forex() {
     const mercado = estado_aplicacion.forexAprendizaje?.market;
     if (!mercado) {
@@ -3932,6 +5143,16 @@ function renderizar_mercado_forex() {
     renderizar_lista_textos("lista_contexto_forex", mercado.insights?.notes || []);
 }
 
+/**
+ * Funcion: renderizar_modulo_forex_activo
+ *
+ * Que hace: pinta el contenido del modulo seleccionado.
+ * Como lo hace: muestra descripcion y objetivo usando el par activo como ejemplo, los bloques, el checklist,
+ *   los dominios y el cuestionario.
+ * Datos que participan: modulo activo y mercado.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_modulo_forex_activo() {
     const curriculum = estado_aplicacion.forexAprendizaje?.curriculum || [];
     const modulo = curriculum.find(function (item) {
@@ -3971,6 +5192,15 @@ function renderizar_modulo_forex_activo() {
     renderizar_quiz_forex(modulo);
 }
 
+/**
+ * Funcion: renderizar_quiz_forex
+ *
+ * Que hace: dibuja el cuestionario de un modulo.
+ * Como lo hace: crea un fieldset por pregunta con opciones tipo radio; el HTML se escapa con escapar_html.
+ * Datos que participan: `modulo` (preguntas, opciones).
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_quiz_forex(modulo) {
     const contenedor = document.getElementById("contenedor_quiz_forex");
     if (!contenedor) {
@@ -3997,6 +5227,17 @@ function renderizar_quiz_forex(modulo) {
     });
 }
 
+/**
+ * Funcion: validar_quiz_forex_activo
+ *
+ * Que hace: corrige el cuestionario del modulo activo.
+ * Como lo hace: exige todas las respuestas y que sean correctas; si hay un error muestra el primero (con su
+ *   explicacion). Si todo es correcto marca el modulo como superado, guarda el progreso y el hito y abre el
+ *   siguiente.
+ * Datos que participan: respuestas marcadas, modulo activo.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function validar_quiz_forex_activo() {
     const curriculum = estado_aplicacion.forexAprendizaje?.curriculum || [];
     const modulo = curriculum.find(function (item) {
@@ -4046,6 +5287,16 @@ function validar_quiz_forex_activo() {
     mostrar_mensaje("mensaje_quiz_forex", `Nota sobresaliente ${aciertos}/${(modulo.preguntas || []).length}. ${modulo.logro || "Ya puedes avanzar al siguiente bloque."}`, "exito");
 }
 
+/**
+ * Funcion: obtener_progreso_forex_local
+ *
+ * Que hace: lee el progreso de estudio del usuario.
+ * Como lo hace: JSON en localStorage con la clave wallet_forex_progress_{id de usuario} (o 'anonimo');
+ *   devuelve {} si esta vacio o corrupto. El progreso vive solo en este navegador.
+ * Datos que participan: usuario actual, localStorage.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: objeto { moduloId: true }.
+ */
 function obtener_progreso_forex_local() {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_progress_${usuarioId}`;
@@ -4057,12 +5308,30 @@ function obtener_progreso_forex_local() {
     }
 }
 
+/**
+ * Funcion: guardar_progreso_forex_local
+ *
+ * Que hace: guarda el progreso de estudio.
+ * Como lo hace: JSON.stringify en localStorage.
+ * Datos que participan: `progreso`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_progreso_forex_local(progreso) {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_progress_${usuarioId}`;
     localStorage.setItem(clave, JSON.stringify(progreso || {}));
 }
 
+/**
+ * Funcion: obtener_historial_forex_local
+ *
+ * Que hace: lee el historial de modulos superados.
+ * Como lo hace: localStorage wallet_forex_history_{id}; [] si esta vacio o corrupto.
+ * Datos que participan: usuario actual.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: arreglo.
+ */
 function obtener_historial_forex_local() {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_history_${usuarioId}`;
@@ -4074,12 +5343,30 @@ function obtener_historial_forex_local() {
     }
 }
 
+/**
+ * Funcion: guardar_historial_forex_local
+ *
+ * Que hace: guarda el historial de modulos superados.
+ * Como lo hace: JSON.stringify en localStorage.
+ * Datos que participan: `historial`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_historial_forex_local(historial) {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_history_${usuarioId}`;
     localStorage.setItem(clave, JSON.stringify(historial || []));
 }
 
+/**
+ * Funcion: registrar_hito_forex
+ *
+ * Que hace: registra un modulo superado en el historial.
+ * Como lo hace: agrega modulo, par y fecha, conserva los ultimos 30 y los guarda.
+ * Datos que participan: `modulo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function registrar_hito_forex(modulo) {
     const historial = obtener_historial_forex_local();
     historial.push({
@@ -4093,6 +5380,17 @@ function registrar_hito_forex(modulo) {
     guardar_historial_forex_local(estado_aplicacion.forexHistorial);
 }
 
+/**
+ * Funcion: renderizar_panel_alertas_superior
+ *
+ * Que hace: pinta la campana: contador y lista de alertas.
+ * Como lo hace: actualiza el numero de no leidas (lo oculta si es
+ *   0) y crea un item por alerta con clase segun su nivel, marcada como vista si ya se leyo, y boton para
+ *      eliminarla. Si no hay alertas muestra un mensaje.
+ * Datos que participan: `alertas`, `totalNoLeidas`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_panel_alertas_superior(alertas, totalNoLeidas) {
     const lista = document.querySelector(".lista_alertas_superior");
     const contador = document.querySelector(".contador_alertas");
@@ -4129,6 +5427,15 @@ function renderizar_panel_alertas_superior(alertas, totalNoLeidas) {
     });
 }
 
+/**
+ * Funcion: normalizar_nivel_alerta_visual
+ *
+ * Que hace: reduce el nivel de alerta a las tres clases visuales.
+ * Como lo hace: mapea sinonimos a 'aceptacion', 'alerta' o 'informativo' (igual que el backend).
+ * Datos que participan: `nivel`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_nivel_alerta_visual(nivel) {
     const nivelNormalizado = String(nivel || "").toLowerCase();
     if (["aceptacion", "exito", "success"].includes(nivelNormalizado)) {
@@ -4140,6 +5447,18 @@ function normalizar_nivel_alerta_visual(nivel) {
     return "informativo";
 }
 
+/**
+ * Funcion: inicializar_simulador
+ *
+ * Que hace: prepara la pagina del simulador Forex.
+ * Como lo hace: carga el historial local, muestra el estado inicial, conecta el cambio de par y el submit
+ *   (valida capital y riesgo, llama a la API, guarda la simulacion local y la pinta) y carga el mercado de
+ *   referencia.
+ * Datos que participan: formulario_simulador, #par_simulacion_forex.
+ * Consultas (API/SQL): POST /api/forex/simulate (backend: calculo en memoria con datos del BCE; no escribe en
+ *   la base); GET /api/forex/learning.
+ * Retorna: Promise<void>.
+ */
 async function inicializar_simulador() {
     const formulario = document.getElementById("formulario_simulador");
     const selectorPar = document.getElementById("par_simulacion_forex");
@@ -4201,6 +5520,15 @@ async function inicializar_simulador() {
     await cargar_mercado_referencia_simulador(selectorPar.value || "EURUSD");
 }
 
+/**
+ * Funcion: renderizar_estado_inicial_simulador
+ *
+ * Que hace: muestra el estado vacio antes de simular.
+ * Como lo hace: pone textos guia y tres tarjetas 'Pendiente' y muestra el estado vacio del grafico.
+ * Datos que participan: ninguno.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_estado_inicial_simulador() {
     renderizar_lista_textos("lista_diario_simulacion", [
         "Primero analiza el mercado activo y luego calcula una idea con riesgo controlado.",
@@ -4226,6 +5554,16 @@ function renderizar_estado_inicial_simulador() {
     alternar_estado_vacio_simulador(true);
 }
 
+/**
+ * Funcion: cargar_mercado_referencia_simulador
+ *
+ * Que hace: carga el mercado del par para acompanar la simulacion.
+ * Como lo hace: guarda la serie y el resumen en el estado, escribe el resumen, crea tres tarjetas (sesgo,
+ *   rango, promedio), lista senales, historial y plan, y dibuja el grafico.
+ * Datos que participan: `par`.
+ * Consultas (API/SQL): GET /api/forex/learning?pair=.
+ * Retorna: Promise<void>.
+ */
 async function cargar_mercado_referencia_simulador(par) {
     const referencia = await consumir_api(`/api/forex/learning?pair=${encodeURIComponent(par)}`);
     estado_aplicacion.forexSimulacion = {
@@ -4268,6 +5606,19 @@ async function cargar_mercado_referencia_simulador(par) {
     renderizar_grafico_mercado_simulador(referencia.market?.series || [], referencia.pair);
 }
 
+/**
+ * Funcion: renderizar_simulacion_forex
+ *
+ * Que hace: pinta el resultado de una simulacion.
+ * Como lo hace: redacta el resumen (compra o venta, ganancia o perdida, riesgo, recorrido y capital final),
+ *   llena el diario, el plan, el historial y las cuatro tarjetas, y dibuja la curva de capital y el grafico de
+ *   mercado.
+ * Datos que participan: `resultado` { pair, direction, riskCapital, movePercent, finalCapital,
+ *   estimatedProfitLoss, entryDate, latestDate, riskRewardRatio, scenarioConfidence, setupChecklist,
+ *   capitalPath, series }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_simulacion_forex(resultado) {
     const salida = document.getElementById("texto_resultado_simulacion");
     if (salida) {
@@ -4348,6 +5699,15 @@ function renderizar_simulacion_forex(resultado) {
     renderizar_grafico_mercado_simulador(resultado.series || [], resultado.pair);
 }
 
+/**
+ * Funcion: obtener_historial_simulacion_local
+ *
+ * Que hace: lee el historial de simulaciones.
+ * Como lo hace: localStorage wallet_forex_sim_history_{id}; [] si esta vacio o corrupto.
+ * Datos que participan: usuario actual.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: arreglo.
+ */
 function obtener_historial_simulacion_local() {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_sim_history_${usuarioId}`;
@@ -4359,12 +5719,30 @@ function obtener_historial_simulacion_local() {
     }
 }
 
+/**
+ * Funcion: guardar_historial_simulacion_local
+ *
+ * Que hace: guarda el historial de simulaciones.
+ * Como lo hace: JSON.stringify en localStorage.
+ * Datos que participan: `historial`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_historial_simulacion_local(historial) {
     const usuarioId = obtener_usuario_actual()?.id || "anonimo";
     const clave = `wallet_forex_sim_history_${usuarioId}`;
     localStorage.setItem(clave, JSON.stringify(historial || []));
 }
 
+/**
+ * Funcion: registrar_simulacion_local
+ *
+ * Que hace: agrega una simulacion al historial local.
+ * Como lo hace: guarda par, direccion, capital final, recorrido y fecha, conservando las ultimas 20.
+ * Datos que participan: `resultado`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function registrar_simulacion_local(resultado) {
     const historial = obtener_historial_simulacion_local();
     historial.push({
@@ -4378,6 +5756,15 @@ function registrar_simulacion_local(resultado) {
     guardar_historial_simulacion_local(estado_aplicacion.forexHistorialSimulacion);
 }
 
+/**
+ * Funcion: renderizar_historial_simulacion
+ *
+ * Que hace: pinta las ultimas 5 simulaciones.
+ * Como lo hace: las invierte para mostrar primero la mas reciente.
+ * Datos que participan: historial local.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_historial_simulacion() {
     const lista = document.getElementById("lista_historial_simulacion");
     if (!lista) {
@@ -4398,6 +5785,15 @@ function renderizar_historial_simulacion() {
         });
 }
 
+/**
+ * Funcion: alternar_estado_vacio_simulador
+ *
+ * Que hace: muestra u oculta el mensaje de grafico vacio.
+ * Como lo hace: alterna la clase estado_vacio_grafico_oculto.
+ * Datos que participan: `mostrar`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function alternar_estado_vacio_simulador(mostrar) {
     const estado = document.getElementById("estado_vacio_simulacion");
     if (!estado) {
@@ -4407,6 +5803,15 @@ function alternar_estado_vacio_simulador(mostrar) {
     estado.classList.toggle("estado_vacio_grafico_oculto", !mostrar);
 }
 
+/**
+ * Funcion: renderizar_grafico_mercado_simulador
+ *
+ * Que hace: dibuja la linea de precio del mercado en el simulador.
+ * Como lo hace: usa crear_o_actualizar_grafico con los colores del tema.
+ * Datos que participan: `series`, `pair`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_grafico_mercado_simulador(series, pair) {
     crear_o_actualizar_grafico("grafico_simulacion_velas", "line", {
         labels: series.map(function (punto) { return punto.date; }),
@@ -4435,6 +5840,16 @@ function renderizar_grafico_mercado_simulador(series, pair) {
     });
 }
 
+/**
+ * Funcion: redibujar_graficos
+ *
+ * Que hace: repinta los graficos con los colores del tema actual.
+ * Como lo hace: vuelve a renderizar movimientos, mercado Forex, mercado del simulador y simulacion si hay
+ *   datos en memoria.
+ * Datos que participan: estado_aplicacion.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function redibujar_graficos() {
     if (estado_aplicacion.movimientos.length) {
         renderizar_graficos_movimientos(estado_aplicacion.movimientos);
@@ -4453,11 +5868,30 @@ function redibujar_graficos() {
     }
 }
 
+/**
+ * Funcion: obtener_color_css
+ *
+ * Que hace: lee el valor de una variable CSS del tema.
+ * Como lo hace: getComputedStyle sobre <html>; usa el respaldo si la variable no existe.
+ * Datos que participan: `nombreVariable`, `respaldo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string de color.
+ */
 function obtener_color_css(nombreVariable, respaldo) {
     const valor = getComputedStyle(document.documentElement).getPropertyValue(nombreVariable).trim();
     return valor || respaldo;
 }
 
+/**
+ * Funcion: crear_o_actualizar_grafico
+ *
+ * Que hace: crea un grafico de Chart.js o lo reemplaza.
+ * Como lo hace: destruye el grafico previo del mismo canvas (evita fugas y superposiciones) y crea uno nuevo;
+ *   no hace nada si Chart.js o el canvas no existen.
+ * Datos que participan: `id`, `tipo`, `data`, `options`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function crear_o_actualizar_grafico(id, tipo, data, options) {
     if (!window.Chart) {
         return;
@@ -4479,6 +5913,15 @@ function crear_o_actualizar_grafico(id, tipo, data, options) {
     });
 }
 
+/**
+ * Funcion: construir_escalas_grafico
+ *
+ * Que hace: arma las escalas X/Y con los colores del tema.
+ * Como lo hace: devuelve la configuracion de ticks y rejilla con variables CSS.
+ * Datos que participan: variables --color_texto_suave y --color_grafico_rejilla.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: objeto de escalas.
+ */
 function construir_escalas_grafico() {
     return {
         x: {
@@ -4500,6 +5943,16 @@ function construir_escalas_grafico() {
     };
 }
 
+/**
+ * Funcion: activar_panel_acceso
+ *
+ * Que hace: muestra el panel de acceso elegido (login, registro o reset).
+ * Como lo hace: guarda el modo en el estado, marca activo el selector login/registro (reset cuenta como login)
+ *   y activa el panel [data-panel-acceso] correspondiente.
+ * Datos que participan: `modo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function activar_panel_acceso(modo) {
     const modoNormalizado = modo || "login";
     estado_aplicacion.modoAcceso = modoNormalizado;
@@ -4516,10 +5969,28 @@ function activar_panel_acceso(modo) {
     });
 }
 
+/**
+ * Funcion: obtener_parametro_url
+ *
+ * Que hace: lee un parametro de la query string.
+ * Como lo hace: URLSearchParams sobre window.location.search.
+ * Datos que participan: `nombre`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string, o '' si no existe.
+ */
 function obtener_parametro_url(nombre) {
     return new URLSearchParams(window.location.search).get(nombre) || "";
 }
 
+/**
+ * Funcion: sincronizar_reset_desde_url
+ *
+ * Que hace: prepara el panel de restablecimiento con los datos del enlace del correo.
+ * Como lo hace: si modo=reset activa el panel; si llegan correo y PIN (o token) los precarga y avisa.
+ * Datos que participan: parametros modo, correo, pin|token.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function sincronizar_reset_desde_url() {
     const modo = obtener_parametro_url("modo");
     const correo = obtener_parametro_url("correo");
@@ -4539,10 +6010,16 @@ function sincronizar_reset_desde_url() {
     }
 }
 
-// Funcion: sincronizar_activacion_registro_desde_url
-// Aqui leo el enlace del correo de activacion.
-// Si el enlace trae PIN y correo, intento cerrar la activacion automaticamente;
-// si solo trae correo, abro el modal ya precargado para que la persona complete el PIN.
+/**
+ * Funcion: sincronizar_activacion_registro_desde_url
+ *
+ * Que hace: lee el enlace del correo de activacion.
+ * Como lo hace: con modo=activar abre el modal precargado; si el enlace trae correo y PIN intenta cerrar la
+ *   activacion automaticamente, y si solo trae correo pide completar el PIN.
+ * Datos que participan: parametros modo, correo, pin.
+ * Consultas (API/SQL): indirecta: POST /api/auth/register/verify.
+ * Retorna: Promise<void>.
+ */
 async function sincronizar_activacion_registro_desde_url() {
     const modo = obtener_parametro_url("modo");
     const correo = obtener_parametro_url("correo");
@@ -4571,6 +6048,15 @@ async function sincronizar_activacion_registro_desde_url() {
     }
 }
 
+/**
+ * Funcion: mostrar_estado_sesion_desde_url
+ *
+ * Que hace: informa por que se llego al login (sesion cerrada o expirada).
+ * Como lo hace: lee ?sesion=cerrada|expirada, muestra el mensaje y limpia el parametro.
+ * Datos que participan: parametro sesion.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function mostrar_estado_sesion_desde_url() {
     const estadoSesion = obtener_parametro_url("sesion");
 
@@ -4586,30 +6072,271 @@ function mostrar_estado_sesion_desde_url() {
     }
 }
 
+/**
+ * Funcion: limpiar_query_login
+ *
+ * Que hace: borra toda la query string de la URL sin recargar.
+ * Como lo hace: history.replaceState con la URL sin search, para que el PIN no quede visible.
+ * Datos que participan: URL actual.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function limpiar_query_login() {
     const url = new URL(window.location.href);
     url.search = "";
     window.history.replaceState({}, document.title, url.toString());
 }
 
+/**
+ * Funcion: limpiar_parametro_url
+ *
+ * Que hace: borra un parametro de la URL sin recargar.
+ * Como lo hace: URL.searchParams.delete y history.replaceState.
+ * Datos que participan: `nombre`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function limpiar_parametro_url(nombre) {
     const url = new URL(window.location.href);
     url.searchParams.delete(nombre);
     window.history.replaceState({}, document.title, url.toString());
 }
 
+/**
+ * Funcion: passwords_coinciden
+ *
+ * Que hace: compara contrasena y confirmacion.
+ * Como lo hace: igualdad estricta de strings.
+ * Datos que participan: `password`, `confirmation`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: boolean.
+ */
+/**
+ * Funcion: abrir_modal_doble_factor
+ *
+ * Que hace: muestra el modal donde se escribe el codigo del segundo paso despues de una contrasena correcta.
+ * Como lo hace: guarda el desafio firmado que devolvio el servidor (twoFactorToken) en estado_aplicacion, muestra a que
+ *               correo (enmascarado) se envio el codigo y abre el modal. En modo preview (sin correo real) precarga
+ *               el codigo para poder probar localmente.
+ * Datos que participan: `respuesta` { twoFactorToken, maskedEmail, expiresInMinutes, previewMode, previewPin }.
+ * Consultas (API/SQL): ninguna; el codigo ya fue enviado por POST /api/auth/login.
+ * Retorna: nada.
+ */
+function abrir_modal_doble_factor(respuesta) {
+    estado_aplicacion.twoFactorToken = respuesta.twoFactorToken || "";
+    establecer_valor("doble_factor_pin", respuesta.previewPin || "");
+    establecer_texto(
+        "doble_factor_destino",
+        `Enviamos un codigo de 6 digitos a ${respuesta.maskedEmail || "tu correo"}. Vence en ${respuesta.expiresInMinutes || 10} minutos.`
+    );
+    mostrar_mensaje_grupo(
+        ["mensaje_doble_factor"],
+        respuesta.previewMode && respuesta.previewPin
+            ? "El correo real no esta configurado, asi que cargue el codigo temporal para que sigas probando."
+            : "Revisa tu correo e ingresa el codigo.",
+        "info",
+        true
+    );
+    abrir_modal_wallet("modal_doble_factor");
+    document.getElementById("doble_factor_pin")?.focus();
+}
+
+/**
+ * Funcion: inicializar_doble_factor_login
+ *
+ * Que hace: conecta el formulario del modal de segundo paso para canjear el codigo por la sesion.
+ * Como lo hace: limpia el codigo a solo numeros mientras se escribe y, en el submit, envia el desafio guardado y el
+ *               codigo; si el servidor acepta guarda la sesion y redirige al panel; si no, muestra el error
+ *               (por ejemplo "Te quedan 3 intento(s)"). Usa banderas data-inicializado para no duplicar listeners.
+ * Datos que participan: #formulario_doble_factor, #doble_factor_pin, estado_aplicacion.twoFactorToken.
+ * Consultas (API/SQL): POST /api/auth/login/verify-2fa (backend: valida firma y codigo del desafio, UPDATE
+ *               usuarios_credenciales SET ultimo_login_exitoso, INSERT en accesos_usuario y entrega el token).
+ * Retorna: nada.
+ */
+function inicializar_doble_factor_login() {
+    const formulario = document.getElementById("formulario_doble_factor");
+    const campoPin = document.getElementById("doble_factor_pin");
+    if (!formulario || formulario.dataset.inicializado) {
+        return;
+    }
+
+    campoPin?.addEventListener("input", function () {
+        campoPin.value = clean_pin_visual(campoPin.value);
+    });
+
+    formulario.addEventListener("submit", async function (evento) {
+        evento.preventDefault();
+        const pin = clean_pin_visual(obtener_valor("doble_factor_pin"));
+        if (!pin) {
+            mostrar_mensaje_grupo(["mensaje_doble_factor"], "Ingresa el codigo de verificacion.", "error");
+            return;
+        }
+
+        try {
+            mostrar_mensaje_grupo(["mensaje_doble_factor"], "Verificando codigo...", "info", true);
+            const respuesta = await consumir_api("/api/auth/login/verify-2fa", {
+                method: "POST",
+                omitirAutorizacion: true,
+                body: {
+                    twoFactorToken: estado_aplicacion.twoFactorToken,
+                    pin
+                }
+            });
+
+            estado_aplicacion.twoFactorToken = "";
+            guardar_sesion_desde_respuesta(respuesta);
+            cerrar_modal_wallet("modal_doble_factor");
+            window.location.href = "principal.html";
+        } catch (error) {
+            mostrar_mensaje_grupo(["mensaje_doble_factor"], error.message || "No fue posible verificar el codigo.", "error");
+        }
+    });
+
+    formulario.dataset.inicializado = "true";
+}
+
+/**
+ * Funcion: actualizar_boton_doble_factor
+ *
+ * Que hace: refleja en el boton del perfil si la verificacion en dos pasos esta activa o no.
+ * Como lo hace: lee perfilActual.dobleFactorActivo y cambia el texto y aria-pressed del boton.
+ * Datos que participan: #boton_doble_factor, estado_aplicacion.perfilActual.
+ * Consultas (API/SQL): ninguna; es logica del navegador.
+ * Retorna: nada.
+ */
+function actualizar_boton_doble_factor() {
+    const boton = document.getElementById("boton_doble_factor");
+    if (!boton) {
+        return;
+    }
+
+    const activo = Boolean(estado_aplicacion.perfilActual?.dobleFactorActivo);
+    boton.textContent = activo ? "Desactivar verificacion en dos pasos" : "Activar verificacion en dos pasos";
+    boton.setAttribute("aria-pressed", String(activo));
+}
+
+/**
+ * Funcion: pedir_contrasena_confirmacion
+ *
+ * Que hace: pide la contrasena actual antes de cambiar un ajuste de seguridad.
+ * Como lo hace: abre un cuadro de SweetAlert2 con campo de contrasena; si SweetAlert2 no esta disponible usa
+ *               window.prompt. La contrasena no se guarda en ningun lado, solo se envia a la API.
+ * Datos que participan: `titulo`, `texto`.
+ * Consultas (API/SQL): ninguna.
+ * Retorna: Promise<string>, contrasena escrita o "" si se cancela.
+ */
+async function pedir_contrasena_confirmacion(titulo, texto) {
+    if (!window.Swal) {
+        return window.prompt(texto || titulo || "Escribe tu contrasena") || "";
+    }
+
+    const respuesta = await window.Swal.fire({
+        title: titulo,
+        text: texto,
+        input: "password",
+        inputPlaceholder: "Tu contrasena",
+        inputAttributes: { autocomplete: "current-password" },
+        showCancelButton: true,
+        confirmButtonText: "Confirmar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: obtener_color_css("--color_morado_principal", "#6f3df4"),
+        background: obtener_color_css("--color_superficie_solida", "#ffffff"),
+        color: obtener_color_css("--color_texto_principal", "#1d152d"),
+        inputValidator: function (valor) {
+            return valor ? undefined : "Ingresa tu contrasena.";
+        }
+    });
+
+    return respuesta.isConfirmed ? String(respuesta.value || "") : "";
+}
+
+/**
+ * Funcion: inicializar_doble_factor_perfil
+ *
+ * Que hace: da vida al boton que activa o desactiva la verificacion en dos pasos desde el perfil.
+ * Como lo hace: al hacer clic pide la contrasena actual, llama a la API con el valor contrario al actual, actualiza
+ *               el perfil en memoria, repinta el boton y la lista de seguridad y recarga las alertas.
+ * Datos que participan: #boton_doble_factor, estado_aplicacion.perfilActual y estado_aplicacion.centros.adelanto.
+ * Consultas (API/SQL): POST /api/auth/two-factor (backend: verifica la contrasena con scrypt y
+ *               UPDATE usuarios_credenciales SET doble_factor_activo; deja alerta de seguridad).
+ * Retorna: nada.
+ */
+function inicializar_doble_factor_perfil() {
+    const boton = document.getElementById("boton_doble_factor");
+    if (!boton || boton.dataset.inicializado) {
+        return;
+    }
+
+    boton.addEventListener("click", async function () {
+        const activar = !estado_aplicacion.perfilActual?.dobleFactorActivo;
+        const password = await pedir_contrasena_confirmacion(
+            activar ? "Activar verificacion en dos pasos" : "Desactivar verificacion en dos pasos",
+            "Por seguridad, confirma tu contrasena actual."
+        );
+
+        if (!password) {
+            return;
+        }
+
+        boton.disabled = true;
+        try {
+            const resultado = await consumir_api("/api/auth/two-factor", {
+                method: "POST",
+                body: { enabled: activar, password }
+            });
+
+            estado_aplicacion.perfilActual = {
+                ...(estado_aplicacion.perfilActual || {}),
+                dobleFactorActivo: Boolean(resultado.twoFactorEnabled)
+            };
+            if (estado_aplicacion.sesion) {
+                estado_aplicacion.sesion.user = estado_aplicacion.perfilActual;
+            }
+
+            actualizar_boton_doble_factor();
+            renderizar_alertas_seguridad(
+                estado_aplicacion.perfilActual,
+                estado_aplicacion.centros?.adelanto?.currentAdvance || null
+            );
+            await refrescar_panel_alertas_desde_servidor();
+            mostrar_mensaje("mensaje_perfil", resultado.message || "Seguridad actualizada.", "exito");
+        } catch (error) {
+            mostrar_mensaje("mensaje_perfil", error.message || "No fue posible cambiar la verificacion en dos pasos.", "error");
+        } finally {
+            boton.disabled = false;
+        }
+    });
+
+    boton.dataset.inicializado = "true";
+}
+
 function passwords_coinciden(password, confirmation) {
     return String(password || "") === String(confirmation || "");
 }
 
-// Funcion: normalizar_correo_local
-// Aqui bajo el correo a un formato comparable desde la interfaz para evitar espacios o mayusculas accidentales.
+/**
+ * Funcion: normalizar_correo_local
+ *
+ * Que hace: baja el correo a un formato comparable (sin espacios ni mayusculas).
+ * Como lo hace: trim y toLowerCase.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_correo_local(valor) {
     return String(valor || "").trim().toLowerCase();
 }
 
-// Funcion: normalizar_dui_visual
-// Aqui formateo el DUI a 12345678-9 mientras la persona escribe para reducir errores manuales.
+/**
+ * Funcion: normalizar_dui_visual
+ *
+ * Que hace: formatea el DUI a 12345678-9 mientras se escribe.
+ * Como lo hace: deja solo digitos (maximo
+ *   9) y agrega el guion antes del ultimo.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_dui_visual(valor) {
     const digitos = String(valor || "").replace(/\D/g, "").slice(0, 9);
     if (digitos.length <= 8) {
@@ -4619,24 +6346,47 @@ function normalizar_dui_visual(valor) {
     return `${digitos.slice(0, 8)}-${digitos.slice(8)}`;
 }
 
-// Funcion: normalizar_telefono_visual
-// Aqui dejo pasar solo caracteres propios de telefono y corto la longitud antes de enviar al backend.
+/**
+ * Funcion: normalizar_telefono_visual
+ *
+ * Que hace: deja pasar solo caracteres propios de un telefono.
+ * Como lo hace: elimina todo lo que no sea digito, +, parentesis, espacio o guion y limita a 25 caracteres.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_telefono_visual(valor) {
     return String(valor || "")
         .replace(/[^\d+() -]/g, "")
         .slice(0, 25);
 }
 
-// Funcion: normalizar_telefono_local_visual
-// Aqui limpio el numero local para que en pantalla solo queden digitos y el prefijo viva aparte en el selector.
+/**
+ * Funcion: normalizar_telefono_local_visual
+ *
+ * Que hace: limpia el numero local para dejar solo digitos (el prefijo vive aparte en el selector).
+ * Como lo hace: elimina no digitos y limita a 15.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_telefono_local_visual(valor) {
     return String(valor || "")
         .replace(/\D/g, "")
         .slice(0, 15);
 }
 
-// Funcion: validar_correo_frontend
-// Aqui replico la validacion fuerte del backend para fallar antes desde la UI.
+/**
+ * Funcion: validar_correo_frontend
+ *
+ * Que hace: valida el correo con las mismas reglas estrictas del backend para fallar antes desde la UI. las
+ *   validaciones del frontend replican las del backend (base.model.js) solo para avisar mas rapido; el backend
+ *   vuelve a validar siempre.
+ * Como lo hace: comprueba longitud, un solo '@', parte local y etiquetas del dominio con TLD de solo letras.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: correo normalizado, o lanza Error.
+ */
 function validar_correo_frontend(valor) {
     const correo = normalizar_correo_local(valor);
     const partes = correo.split("@");
@@ -4679,8 +6429,17 @@ function validar_correo_frontend(valor) {
     return correo;
 }
 
-// Funcion: validar_nombre_humano_frontend
-// Aqui rechazo nombres mezclados con numeros o simbolos raros para mantener identidad consistente.
+/**
+ * Funcion: validar_nombre_humano_frontend
+ *
+ * Que hace: rechaza nombres con numeros o simbolos raros. las validaciones del frontend replican las del
+ *   backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: exige entre 2 y 80 caracteres y una expresion regular de letras separadas por espacio,
+ *   apostrofe, guion o punto.
+ * Datos que participan: `valor`, `etiqueta`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: texto, o lanza Error.
+ */
 function validar_nombre_humano_frontend(valor, etiqueta) {
     const texto = String(valor || "").trim();
 
@@ -4695,8 +6454,16 @@ function validar_nombre_humano_frontend(valor, etiqueta) {
     return texto;
 }
 
-// Funcion: validar_telefono_frontend
-// Aqui valido telefono visible y descarto patrones demasiado simples o falsos.
+/**
+ * Funcion: validar_telefono_frontend
+ *
+ * Que hace: valida el telefono visible y descarta patrones falsos. las validaciones del frontend replican las
+ *   del backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: exige 8 a 15 digitos y rechaza repetidos (11111111) y secuencias tipicas.
+ * Datos que participan: `valor`, `etiqueta`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: telefono, o lanza Error.
+ */
 function validar_telefono_frontend(valor, etiqueta = "telefono") {
     const telefono = normalizar_telefono_visual(valor).trim();
     const digitos = telefono.replace(/\D/g, "");
@@ -4716,8 +6483,16 @@ function validar_telefono_frontend(valor, etiqueta = "telefono") {
     return telefono;
 }
 
-// Funcion: validar_dui_frontend
-// Aqui exijo 9 digitos de DUI y regreso el valor ya normalizado para reutilizarlo al enviar.
+/**
+ * Funcion: validar_dui_frontend
+ *
+ * Que hace: exige 9 digitos de DUI y devuelve el valor ya normalizado. las validaciones del frontend replican
+ *   las del backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: normaliza con guion y rechaza todos los digitos iguales.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: DUI normalizado, o lanza Error.
+ */
 function validar_dui_frontend(valor) {
     const dui = normalizar_dui_visual(valor);
     const digitos = dui.replace(/\D/g, "");
@@ -4733,8 +6508,16 @@ function validar_dui_frontend(valor) {
     return dui;
 }
 
-// Funcion: validar_fecha_nacimiento_frontend
-// Aqui compruebo mayoria de edad antes de golpear el backend con registros incompletos.
+/**
+ * Funcion: validar_fecha_nacimiento_frontend
+ *
+ * Que hace: comprueba fecha valida, no futura y mayoria de edad. las validaciones del frontend replican las
+ *   del backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: calcula la edad ajustando por mes y dia y exige 18 anios.
+ * Datos que participan: `valor`, `requerida`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: fecha (texto), '' si es opcional y vacia, o lanza Error.
+ */
 function validar_fecha_nacimiento_frontend(valor, requerida) {
     const fechaTexto = String(valor || "").trim();
 
@@ -4770,8 +6553,16 @@ function validar_fecha_nacimiento_frontend(valor, requerida) {
     return fechaTexto;
 }
 
-// Funcion: validar_direccion_frontend
-// Aqui filtro caracteres raros y exijo una direccion util de verdad.
+/**
+ * Funcion: validar_direccion_frontend
+ *
+ * Que hace: filtra caracteres raros y exige una direccion util. las validaciones del frontend replican las del
+ *   backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: entre 10 y 300 caracteres con letras, numeros y # . , - /
+ * Datos que participan: `valor`, `requerida`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: direccion, '' si es opcional y vacia, o lanza Error.
+ */
 function validar_direccion_frontend(valor, requerida) {
     const direccion = String(valor || "").trim();
 
@@ -4794,8 +6585,16 @@ function validar_direccion_frontend(valor, requerida) {
     return direccion;
 }
 
-// Funcion: validar_password_segura_frontend
-// Aqui replico la regla minima de contrasena para avisar rapido antes del envio.
+/**
+ * Funcion: validar_password_segura_frontend
+ *
+ * Que hace: replica la regla minima de contrasena para avisar rapido. las validaciones del frontend replican
+ *   las del backend (base.model.js) solo para avisar mas rapido; el backend vuelve a validar siempre.
+ * Como lo hace: minimo 8 caracteres con al menos una letra y un numero.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: contrasena, o lanza Error.
+ */
 function validar_password_segura_frontend(valor) {
     const password = String(valor || "");
     if (password.length < 8) {
@@ -4809,8 +6608,15 @@ function validar_password_segura_frontend(valor) {
     return password;
 }
 
-// Funcion: aplicar_formato_documento_input
-// Aqui conecto el formateo del DUI al input para que la persona vea el patron correcto mientras escribe.
+/**
+ * Funcion: aplicar_formato_documento_input
+ *
+ * Que hace: formatea el DUI en vivo en un input.
+ * Como lo hace: registra una sola vez un listener 'input' que aplica normalizar_dui_visual.
+ * Datos que participan: `input`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_formato_documento_input(input) {
     if (!input || input.dataset.formatoDuiAplicado) {
         return;
@@ -4822,8 +6628,15 @@ function aplicar_formato_documento_input(input) {
     input.dataset.formatoDuiAplicado = "true";
 }
 
-// Funcion: aplicar_formato_telefono_input
-// Aqui limpio el numero local en tiempo real para dejarlo solo con digitos antes de componer el telefono final.
+/**
+ * Funcion: aplicar_formato_telefono_input
+ *
+ * Que hace: limpia el telefono local en vivo en un input.
+ * Como lo hace: registra una sola vez un listener 'input' que deja solo digitos.
+ * Datos que participan: `input`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function aplicar_formato_telefono_input(input) {
     if (!input || input.dataset.formatoTelefonoAplicado) {
         return;
@@ -4835,6 +6648,16 @@ function aplicar_formato_telefono_input(input) {
     input.dataset.formatoTelefonoAplicado = "true";
 }
 
+/**
+ * Funcion: guardar_sesion_desde_respuesta
+ *
+ * Que hace: guarda en el navegador la sesion devuelta por login, activacion o cambio de contrasena.
+ * Como lo hace: guarda el token en localStorage, el usuario en perfilActual y { user, alerts, unreadAlerts }
+ *   en sesion, y refresca el menu.
+ * Datos que participan: `respuesta` { token, user, alerts, unreadAlerts }.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function guardar_sesion_desde_respuesta(respuesta) {
     if (respuesta.token) {
         guardar_token_sesion(respuesta.token);
@@ -4849,11 +6672,29 @@ function guardar_sesion_desde_respuesta(respuesta) {
     sincronizar_interfaz_sesion();
 }
 
+/**
+ * Funcion: obtener_valor
+ *
+ * Que hace: lee el valor de un campo por id, sin espacios sobrantes.
+ * Como lo hace: getElementById y trim; devuelve '' si el campo no existe.
+ * Datos que participan: `id`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function obtener_valor(id) {
     const elemento = document.getElementById(id);
     return elemento ? String(elemento.value || "").trim() : "";
 }
 
+/**
+ * Funcion: establecer_valor
+ *
+ * Que hace: escribe el valor de un campo por id.
+ * Como lo hace: asigna element.value si el campo existe.
+ * Datos que participan: `id`, `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function establecer_valor(id, valor) {
     const elemento = document.getElementById(id);
     if (elemento) {
@@ -4861,6 +6702,15 @@ function establecer_valor(id, valor) {
     }
 }
 
+/**
+ * Funcion: establecer_texto
+ *
+ * Que hace: escribe un texto en un elemento por id.
+ * Como lo hace: usa textContent (no interpreta HTML).
+ * Datos que participan: `id`, `texto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function establecer_texto(id, texto) {
     const elemento = document.getElementById(id);
     if (elemento) {
@@ -4868,12 +6718,30 @@ function establecer_texto(id, texto) {
     }
 }
 
+/**
+ * Funcion: agregar_li
+ *
+ * Que hace: agrega un <li> con texto a una lista.
+ * Como lo hace: crea el elemento con textContent y lo anade.
+ * Datos que participan: `lista`, `texto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function agregar_li(lista, texto) {
     const li = document.createElement("li");
     li.textContent = texto;
     lista.appendChild(li);
 }
 
+/**
+ * Funcion: renderizar_lista_textos
+ *
+ * Que hace: reemplaza el contenido de una lista por items de texto.
+ * Como lo hace: vacia la lista y agrega un <li> por texto.
+ * Datos que participan: `id_lista`, `elementos`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function renderizar_lista_textos(id_lista, elementos) {
     const lista = document.getElementById(id_lista);
     if (!lista) return;
@@ -4881,6 +6749,16 @@ function renderizar_lista_textos(id_lista, elementos) {
     elementos.forEach(function (texto) { agregar_li(lista, texto); });
 }
 
+/**
+ * Funcion: mostrar_mensaje
+ *
+ * Que hace: muestra un mensaje de estado en un elemento y, ademas, un toast.
+ * Como lo hace: escribe el texto, reemplaza la clase de tipo (info, error o exito) y llama a
+ *   mostrar_toast_lateral.
+ * Datos que participan: `id`, `texto`, `tipo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function mostrar_mensaje(id, texto, tipo) {
     const elemento = document.getElementById(id);
     if (!elemento) return;
@@ -4894,6 +6772,15 @@ function mostrar_mensaje(id, texto, tipo) {
     }
 }
 
+/**
+ * Funcion: mostrar_mensaje_grupo
+ *
+ * Que hace: muestra el mismo mensaje en varios elementos (por ejemplo, pagina y modal).
+ * Como lo hace: aplica texto y clase a cada id existente y lanza un unico toast salvo que sea silencioso.
+ * Datos que participan: `ids`, `texto`, `tipo`, `silencioso`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: nada.
+ */
 function mostrar_mensaje_grupo(ids, texto, tipo, silencioso) {
     const listaIds = Array.isArray(ids) ? ids : [ids];
     let primerElemento = null;
@@ -4920,6 +6807,15 @@ function mostrar_mensaje_grupo(ids, texto, tipo, silencioso) {
     }
 }
 
+/**
+ * Funcion: formatear_moneda
+ *
+ * Que hace: formatea un monto en dolares.
+ * Como lo hace: Intl.NumberFormat con locale es-SV, moneda USD y 2 decimales.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string, ej. '$1,250.00'.
+ */
 function formatear_moneda(valor) {
     return new Intl.NumberFormat("es-SV", {
         style: "currency",
@@ -4928,12 +6824,30 @@ function formatear_moneda(valor) {
     }).format(Number(valor || 0));
 }
 
+/**
+ * Funcion: formatear_monto_con_signo
+ *
+ * Que hace: formatea un monto con + o - segun corresponda.
+ * Como lo hace: calcula el signo y formatea el valor absoluto.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function formatear_monto_con_signo(valor) {
     const numero = Number(valor || 0);
     const signo = numero > 0 ? "+" : numero < 0 ? "-" : "";
     return signo + formatear_moneda(Math.abs(numero));
 }
 
+/**
+ * Funcion: formatear_fecha
+ *
+ * Que hace: formatea una fecha corta para mostrar.
+ * Como lo hace: toLocaleDateString('es-SV'); devuelve 'Sin registros' si es vacia o invalida.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function formatear_fecha(valor) {
     if (!valor) {
         return "Sin registros";
@@ -4947,6 +6861,15 @@ function formatear_fecha(valor) {
     return fecha.toLocaleDateString("es-SV");
 }
 
+/**
+ * Funcion: formatear_fecha_input
+ *
+ * Que hace: convierte una fecha al formato aaaa-mm-dd que exige <input type='date'>.
+ * Como lo hace: si ya viene asi la deja; si no, la interpreta y toma los primeros 10 caracteres del ISO.
+ * Datos que participan: `valor`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string, o ''.
+ */
 function formatear_fecha_input(valor) {
     if (!valor) {
         return "";
@@ -4965,21 +6888,58 @@ function formatear_fecha_input(valor) {
     return fecha.toISOString().slice(0, 10);
 }
 
+/**
+ * Funcion: normalizar_tipo_movimiento
+ *
+ * Que hace: normaliza el filtro de tipo antes de enviarlo a la API.
+ * Como lo hace: vacio o 'todos' => 'todos'; si no, minusculas.
+ * Datos que participan: `tipo`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_tipo_movimiento(tipo) {
     if (!tipo || tipo === "todos") return "todos";
     return tipo.toLowerCase();
 }
 
+/**
+ * Funcion: normalizar_estado_movimiento
+ *
+ * Que hace: normaliza el filtro de estado antes de enviarlo a la API.
+ * Como lo hace: vacio o 'todos' => 'todos'; si no, minusculas.
+ * Datos que participan: `estado`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function normalizar_estado_movimiento(estado) {
     if (!estado || estado === "todos") return "todos";
     return estado.toLowerCase();
 }
 
+/**
+ * Funcion: capitalizar
+ *
+ * Que hace: pone la primera letra en mayuscula.
+ * Como lo hace: charAt(0).toUpperCase() mas el resto sin cambios.
+ * Datos que participan: `texto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function capitalizar(texto) {
     const valor = String(texto || "");
     return valor ? valor.charAt(0).toUpperCase() + valor.slice(1) : "";
 }
 
+/**
+ * Funcion: escapar_html
+ *
+ * Que hace: escapa caracteres especiales para insertar texto de forma segura en HTML (previene XSS).
+ * Como lo hace: reemplaza & < > " y ' por sus entidades. Debe usarse siempre que un dato del usuario o del
+ *   servidor entre a un innerHTML.
+ * Datos que participan: `texto`.
+ * Consultas (API/SQL): ninguna; es logica del navegador y no consulta backend ni base de datos.
+ * Retorna: string.
+ */
 function escapar_html(texto) {
     return String(texto || "")
         .replaceAll("&", "&amp;")

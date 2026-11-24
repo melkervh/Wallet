@@ -73,7 +73,7 @@ function loadEnvFile() {
 }
 
 const fileEnv = loadEnvFile();
-const mergedEnv = { ...process.env, ...fileEnv };
+const mergedEnv = { ...fileEnv, ...process.env };
 const sslEnabled = parseBoolean(mergedEnv.PGSSL, false);
 const port = Number(mergedEnv.PORT || 3000);
 const smtpAuthUser = mergedEnv.SMTP_AUTH_USER || mergedEnv.SMTP_USER || "";

@@ -1036,18 +1036,23 @@ async function handleRequest(request, response) {
 }
 
 // Aqui levanto el servidor HTTP nativo y delego todo al manejador principal.
-const server = http.createServer((request, response) => {
-    handleRequest(request, response);
-});
+// En Vercel (funcion serverless) no se llama a listen: api/index.js importa handleRequest.
+if (require.main === module) {
+    const server = http.createServer((request, response) => {
+        handleRequest(request, response);
+    });
 
-// Al iniciar valido la base para detectar pronto si el entorno quedo mal configurado.
-server.listen(config.port, async () => {
-    console.log(`Wallet disponible en http://localhost:${config.port}`);
+    // Al iniciar valido la base para detectar pronto si el entorno quedo mal configurado.
+    server.listen(config.port, async () => {
+        console.log(`Wallet disponible en http://localhost:${config.port}`);
 
-    try {
-        await healthCheck();
-        console.log("Conexion con PostgreSQL verificada.");
-    } catch (error) {
-        console.warn("No se pudo validar la conexion con PostgreSQL:", error.message);
-    }
-});
+        try {
+            await healthCheck();
+            console.log("Conexion con PostgreSQL verificada.");
+        } catch (error) {
+            console.warn("No se pudo validar la conexion con PostgreSQL:", error.message);
+        }
+    });
+}
+
+module.exports = { handleRequest };

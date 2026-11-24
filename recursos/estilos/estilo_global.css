@@ -2681,3 +2681,97 @@ select:focus {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+ * SECCION: MEJORAS DE BOTONES Y MENU (movil)
+ * Que hace: da jerarquia a los botones (primario relleno, secundario con borde), areas tactiles de 48px,
+ *   acciones apiladas a ancho completo, atajos en dos columnas y menu desplegable alineado a la izquierda.
+ * ========================================================================== */
+.boton,
+.boton_icono {
+    min-height: 3rem;
+    line-height: 1.2;
+}
+
+.boton-primario {
+    background: var(--color_morado_principal);
+    color: #ffffff;
+    border-color: var(--color_morado_principal);
+}
+
+.boton-primario:hover {
+    filter: brightness(1.08);
+}
+
+@media (max-width: 760px) {
+    .fila_acciones_modales {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .fila_acciones_modales .boton,
+    .fila_acciones_modales .boton_icono,
+    .formulario > .boton,
+    .boton_cerrar_panel {
+        width: 100%;
+    }
+
+    .fila_acciones_modales_login {
+        flex-direction: column-reverse;
+    }
+
+    .cabecera_panel_accion {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+    }
+
+    .cabecera_panel_accion .boton {
+        width: 100%;
+    }
+
+    .rejilla_atajos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+
+    .atajo_icono {
+        padding: 0.65rem 0.7rem;
+        min-height: 3.2rem;
+        font-size: 0.95rem;
+    }
+
+    .simbolo_atajo {
+        flex: 0 0 34px;
+    }
+
+    .boton_cerrar_panel {
+        margin-top: 0.9rem;
+    }
+
+    .fila_montos_rapidos {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .boton_monto_rapido {
+        min-height: 2.75rem;
+    }
+
+    .menu_superior {
+        max-height: calc(100vh - var(--alto_barra_superior) - 12px);
+        overflow-y: auto;
+        padding: 0.6rem 4% 0.9rem;
+        gap: 0.35rem;
+        box-shadow: 0 14px 24px rgba(20, 12, 48, 0.14);
+    }
+
+    .menu_superior a,
+    .boton_menu_superior {
+        text-align: left;
+        justify-content: flex-start;
+        min-height: 3rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 12px;
+    }
+}

@@ -2775,3 +2775,70 @@ select:focus {
         border-radius: 12px;
     }
 }
+
+/* ==========================================================================
+ * SECCION: AJUSTES UX MOVIL (segunda pasada)
+ * Que hace: botones de cabeceras a ancho completo, atajo impar centrado a todo el ancho, submenu de usuario
+ *   alineado a la izquierda, notificaciones (toast) bajo la barra y sin tapar el logo, y campos a 16px para
+ *   que iOS no haga zoom al enfocar.
+ * ========================================================================== */
+@media (max-width: 760px) {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    button,
+    a {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    .cabecera_panel_accion {
+        align-items: stretch;
+    }
+
+    .cabecera_panel_accion .fila_acciones_modales {
+        width: 100%;
+    }
+
+    .rejilla_atajos > .atajo_icono:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .submenu_usuario {
+        width: min(280px, calc(100vw - 24px));
+    }
+
+    .item_submenu_usuario {
+        text-align: left;
+        min-height: 3rem;
+    }
+
+    .item_submenu_usuario span {
+        flex: 1;
+        text-align: left;
+    }
+
+    .swal2-container.swal2-top-end {
+        top: calc(var(--alto_barra_superior) + 8px) !important;
+        right: 0 !important;
+        left: 0 !important;
+        padding: 0 12px !important;
+        align-items: flex-start;
+    }
+
+    .swal2-container.swal2-top-end .swal2-popup.swal2-toast {
+        width: 100% !important;
+        max-width: none;
+        box-sizing: border-box;
+    }
+
+    .contenedor_con_menu {
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    }
+}

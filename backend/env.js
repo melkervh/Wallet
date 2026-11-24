@@ -94,6 +94,11 @@ if (sslEnabled) {
     baseDatabaseConfig.ssl = { rejectUnauthorized: false };
 }
 
+// En serverless cada instancia abre su propio pool: se limita para no agotar las conexiones del pooler.
+baseDatabaseConfig.max = Number(mergedEnv.PG_POOL_MAX || (mergedEnv.VERCEL ? 3 : 10));
+baseDatabaseConfig.idleTimeoutMillis = Number(mergedEnv.PG_IDLE_TIMEOUT_MS || 10000);
+baseDatabaseConfig.connectionTimeoutMillis = Number(mergedEnv.PG_CONNECT_TIMEOUT_MS || 10000);
+
 const config = {
     port,
     appSecret: mergedEnv.APP_SECRET || "wallet-secret-dev",

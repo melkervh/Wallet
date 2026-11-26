@@ -2842,3 +2842,93 @@ select:focus {
         padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
     }
 }
+
+/* ==========================================================================
+ * SECCION: DOCUMENTOS LEGALES
+ * Que hace: estilos de terminos.html y privacidad.html, el pie legal del login y la casilla de aceptacion.
+ * ========================================================================== */
+.documento_legal {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 1.6rem clamp(1rem, 4vw, 2.2rem);
+    line-height: 1.65;
+}
+
+.documento_legal h1 {
+    margin-bottom: 0.3rem;
+}
+
+.documento_legal h2 {
+    margin-top: 1.6rem;
+    font-size: 1.15rem;
+    color: var(--color_morado_principal);
+}
+
+.documento_legal ul {
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.documento_legal a {
+    color: var(--color_morado_principal);
+}
+
+.documento_legal_meta {
+    color: var(--color_texto_secundario);
+    font-size: 0.92rem;
+}
+
+.documento_legal_volver {
+    margin-top: 2rem;
+}
+
+.aviso_legal_destacado {
+    margin: 1rem 0 0.4rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color_morado_principal);
+    border-radius: 14px;
+    background: rgba(111, 61, 244, 0.08);
+}
+
+.menu_legal_superior {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+.menu_legal_superior a {
+    padding: 0.5rem 0.8rem;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--color_texto_principal);
+}
+
+.menu_legal_superior a.enlace_activo {
+    color: var(--color_morado_principal);
+    font-weight: 700;
+}
+
+.fila_aceptar_terminos {
+    align-items: flex-start;
+    line-height: 1.45;
+}
+
+.fila_aceptar_terminos input {
+    margin-top: 0.2rem;
+    flex: 0 0 auto;
+}
+
+.fila_aceptar_terminos a,
+.pie_legal a {
+    color: var(--color_morado_principal);
+}
+
+.pie_legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 0.8rem;
+    padding: 1rem 4% calc(1.4rem + env(safe-area-inset-bottom));
+    font-size: 0.92rem;
+}

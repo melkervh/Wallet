@@ -1449,6 +1449,12 @@ async function inicializar_login() {
             return;
         }
 
+        const casillaTerminos = document.getElementById("registro_acepta_terminos");
+        if (!casillaTerminos || !casillaTerminos.checked) {
+            mostrar_mensaje("mensaje_registro", "Debes aceptar los Terminos y Condiciones y la Politica de Privacidad.", "error");
+            return;
+        }
+
         mostrar_mensaje("mensaje_registro", "Creando usuario y cuenta principal...", "info");
 
         try {
@@ -1476,7 +1482,8 @@ async function inicializar_login() {
                     birthDate,
                     documentId,
                     address,
-                    password
+                    password,
+                    acceptedTerms: true
                 }
             });
 

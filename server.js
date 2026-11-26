@@ -387,6 +387,7 @@ async function handleApiRequest(request, response, url) {
             documentId: body.documentId,
             address: body.address,
             password: body.password,
+            acceptedTerms: body.acceptedTerms === true,
             requestBaseUrl: getRequestBaseUrl(request),
             ipAddress: getClientIpAddress(request),
             userAgent: String(request.headers["user-agent"] || "web")
@@ -750,7 +751,7 @@ async function handleApiRequest(request, response, url) {
 
 // Paginas HTML que si pueden indexarse en buscadores. El resto de vistas son pantallas
 // autenticadas (saldos, movimientos, perfil) y se marcan como noindex tambien por cabecera.
-const publicPagePaths = new Set(["/views/login.html"]);
+const publicPagePaths = new Set(["/views/login.html", "/views/terminos.html", "/views/privacidad.html"]);
 
 /**
  * Funcion: sendRobotsTxt
@@ -767,6 +768,8 @@ function sendRobotsTxt(request, response) {
     const lines = [
         "User-agent: *",
         "Allow: /views/login.html",
+        "Allow: /views/terminos.html",
+        "Allow: /views/privacidad.html",
         "Allow: /recursos/",
         "Disallow: /api/",
         "Disallow: /views/principal.html",

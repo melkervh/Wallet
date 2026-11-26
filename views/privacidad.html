@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet Digital | Politica de Privacidad</title>
+    <meta name="description" content="Como Wallet Digital recopila, usa y protege tus datos personales.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="application-name" content="Wallet Digital">
+    <link rel="icon" type="image/png" href="../recursos/imagenes/Nova%20Black.png">
+    <link rel="canonical" href="{{BASE_URL}}/views/privacidad.html">
+    <link rel="stylesheet" href="../recursos/estilos/estilo_global.css">
+</head>
+<body>
+    <header class="barra_superior">
+        <div class="contenedor barra_superior_interior">
+            <a href="login.html" class="marca_wallet" aria-label="Wallet Digital">
+                <span class="marca_wallet_logos" aria-hidden="true">
+                    <img src="../recursos/imagenes/Nova%20white.png" alt="" class="marca_wallet_logo marca_wallet_logo_claro">
+                    <img src="../recursos/imagenes/Nova%20Black.png" alt="" class="marca_wallet_logo marca_wallet_logo_oscuro">
+                </span>
+                <span class="marca_wallet_texto">Wallet Digital</span>
+            </a>
+            <nav class="menu_legal_superior" aria-label="Documentos legales">
+                <a href="terminos.html">Terminos</a>
+                <a href="privacidad.html" class="enlace_activo">Privacidad</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="contenedor contenedor_con_menu contenedor-centrado">
+        <article class="tarjeta documento_legal">
+            <h1>Politica de Privacidad</h1>
+            <p class="documento_legal_meta">Version 1.0 &middot; Ultima actualizacion: 26 de noviembre de 2026</p>
+
+            <aside class="aviso_legal_destacado">
+                Esta politica explica que datos personales recopila Wallet Digital, para que los usa y como los protegemos. Es un proyecto academico, pero tratamos tu informacion con cuidado.
+            </aside>
+
+            <h2>1. Datos que recopilamos</h2>
+            <ul>
+                <li><strong>Identificacion y contacto:</strong> nombres, apellidos, correo electronico, telefono, fecha de nacimiento, documento de identidad (DUI) y direccion.</li>
+                <li><strong>Cuenta y seguridad:</strong> contrasena (almacenada solo como hash), intentos de acceso, estado de la cuenta y verificacion en dos pasos.</li>
+                <li><strong>Actividad en la plataforma:</strong> cuentas, tarjetas (solo los ultimos 4 digitos), beneficiarios, movimientos, pagos, ahorros, adelantos y alertas.</li>
+                <li><strong>Datos tecnicos de acceso:</strong> direccion IP y navegador (user agent) de cada inicio de sesion, con fines de seguridad.</li>
+                <li><strong>Foto de perfil</strong>, si decides subirla.</li>
+            </ul>
+
+            <h2>2. Para que usamos tus datos</h2>
+            <ul>
+                <li>Crear y administrar tu cuenta y mostrarte tu informacion.</li>
+                <li>Verificar tu identidad y enviarte PIN y codigos por correo.</li>
+                <li>Procesar las operaciones simuladas que realices.</li>
+                <li>Proteger la plataforma contra accesos no autorizados y abusos.</li>
+                <li>Enviarte alertas relacionadas con tu cuenta.</li>
+            </ul>
+            <p>No vendemos tus datos ni los usamos para publicidad.</p>
+
+            <h2>3. Base del tratamiento</h2>
+            <p>Tratamos tus datos con tu consentimiento, que otorgas al aceptar los Terminos y esta Politica al registrarte, y por ser necesarios para prestar el servicio que solicitas. Guardamos la fecha y la version de los documentos que aceptaste.</p>
+
+            <h2>4. Con quien compartimos informacion</h2>
+            <p>Solo con proveedores tecnicos necesarios para operar el servicio, que pueden procesar datos fuera de El Salvador:</p>
+            <ul>
+                <li><strong>Supabase</strong> (base de datos PostgreSQL) y <strong>Vercel</strong> (alojamiento de la aplicacion).</li>
+                <li><strong>IONOS</strong> (servidor de correo para enviar PIN y avisos).</li>
+                <li><strong>Twilio</strong> (WhatsApp), unicamente si esa opcion se activa.</li>
+                <li><strong>jsDelivr</strong> (librerias de interfaz): puede ver tu direccion IP al cargar la pagina.</li>
+                <li>Los tipos de cambio se consultan a una fuente publica (Banco Central Europeo) sin enviar tus datos personales.</li>
+            </ul>
+            <p>Tambien podremos divulgar informacion si una autoridad competente lo exige conforme a la ley.</p>
+
+            <h2>5. Como protegemos tus datos</h2>
+            <ul>
+                <li>Las contrasenas se guardan con hash scrypt y sal unica; los PIN y tokens temporales se guardan como hash.</li>
+                <li>Las conexiones usan HTTPS y la base de datos no es accesible publicamente (acceso restringido y seguridad por filas activada).</li>
+                <li>Hay bloqueo temporal por intentos fallidos, limite de solicitudes y verificacion por correo.</li>
+            </ul>
+            <p>Ningun sistema es 100% seguro. Si detectamos un incidente que te afecte, te lo informaremos.</p>
+
+            <h2>6. Almacenamiento en tu navegador</h2>
+            <p>Usamos el almacenamiento local del navegador para mantener tu sesion iniciada (si lo eliges) y recordar preferencias como el modo claro u oscuro. No usamos cookies de publicidad ni de seguimiento.</p>
+
+            <h2>7. Cuanto tiempo conservamos tus datos</h2>
+            <p>Mientras tu cuenta exista y sea necesario para el funcionamiento del proyecto. Los PIN y tokens temporales vencen en minutos. Al ser una plataforma de demostracion, los datos pueden eliminarse al finalizar el proyecto.</p>
+
+            <h2>8. Tus derechos</h2>
+            <p>Puedes solicitar acceso a tus datos, su correccion, su eliminacion, oponerte a ciertos tratamientos o retirar tu consentimiento. Puedes actualizar parte de tu informacion desde tu perfil; para las demas solicitudes, contacta al equipo responsable del proyecto a traves de tu institucion educativa.</p>
+
+            <h2>9. Menores de edad</h2>
+            <p>La plataforma esta dirigida a personas mayores de edad. No recopilamos datos de menores de forma intencional.</p>
+
+            <h2>10. Cambios en esta politica</h2>
+            <p>Si la actualizamos, publicaremos la nueva version en esta pagina con su fecha y, si el cambio es importante, te pediremos aceptarla de nuevo.</p>
+
+            <p class="documento_legal_volver"><a class="enlace_accion" href="login.html">&larr; Volver al inicio de sesion</a></p>
+        </article>
+    </main>
+</body>
+</html>

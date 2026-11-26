@@ -142,6 +142,11 @@
                             </div>
                         </div>
 
+                        <label class="fila_control_login fila_aceptar_terminos" for="registro_acepta_terminos">
+                            <input id="registro_acepta_terminos" name="registro_acepta_terminos" type="checkbox" required>
+                            <span>Acepto los <a href="terminos.html" target="_blank" rel="noopener">Terminos y Condiciones</a> y la <a href="privacidad.html" target="_blank" rel="noopener">Politica de Privacidad</a>.</span>
+                        </label>
+
                         <button type="submit" class="boton boton-primario">Crear usuario y cuenta</button>
                     </form>
                     <p id="mensaje_registro" class="texto_estado_formulario">Si es tu primer acceso, registrate y el sistema crea tu cuenta principal.</p>
@@ -189,6 +194,12 @@
             </article>
         </section>
     </main>
+
+    <footer class="pie_legal">
+        <a href="terminos.html">Terminos y Condiciones</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="privacidad.html">Politica de Privacidad</a>
+    </footer>
 
     <dialog id="modal_doble_factor" class="modal_wallet">
         <div class="modal_wallet_panel modal_wallet_panel_compacto">

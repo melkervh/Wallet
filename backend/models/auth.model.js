@@ -514,10 +514,16 @@ async function registerUser({
     documentId,
     address,
     password,
+    acceptedTerms,
     requestBaseUrl,
     ipAddress,
     userAgent
 }) {
+    // Sin aceptar Terminos y Politica de Privacidad no se crea la cuenta.
+    if (acceptedTerms !== true) {
+        throw new HttpError(400, "Debes aceptar los Terminos y Condiciones y la Politica de Privacidad para registrarte.");
+    }
+
     return withTransaction(async (client) => {
         // En este flujo preparo todo de una vez para que
         // el usuario salga con wallet lista y trazabilidad
@@ -554,9 +560,11 @@ async function registerUser({
                 fecha_nacimiento,
                 documento_identidad,
                 direccion,
-                estado
+                estado,
+                terminos_aceptados_en,
+                terminos_version
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'suspendido')
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'suspendido', NOW(), $8)
             RETURNING id_usuario
             `,
             [
@@ -566,7 +574,8 @@ async function registerUser({
                 telefono || null,
                 fechaNacimiento || null,
                 documentoIdentidad || null,
-                direccion || null
+                direccion || null,
+                LEGAL_TERMS_VERSION
             ]
         );
 
@@ -1016,6 +1025,9 @@ async function resetPasswordWithToken({ email, pin, newPassword, ipAddress, user
         };
     });
 }
+
+// Version vigente de Terminos y Politica de Privacidad (views/terminos.html y views/privacidad.html).
+const LEGAL_TERMS_VERSION = "1.0";
 
 const TWO_FACTOR_MAX_ATTEMPTS = 5;
 

@@ -48,6 +48,8 @@ CREATE TABLE usuarios (
     foto_perfil_archivo     VARCHAR(255),
     estado                  VARCHAR(20) NOT NULL DEFAULT 'activo'
         CHECK (estado IN ('activo', 'bloqueado', 'suspendido')),
+    terminos_aceptados_en   TIMESTAMPTZ,
+    terminos_version        VARCHAR(20),
     creado_en               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     actualizado_en          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
